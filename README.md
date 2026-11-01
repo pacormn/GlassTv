@@ -2,11 +2,15 @@
 
 ## Télécharger sur la TV
 
-### [⬇ Télécharger GlassTV 0.1.0 — APK dans un ZIP](https://github.com/pacormn/GlassTv/actions/runs/41345612753/artifacts/13099470598)
+### [⬇ Ouvrir le téléchargement de GlassTV](https://github.com/pacormn/GlassTv/actions/runs/41345612753)
 
-Connexion à ton compte GitHub requise. Après téléchargement, extrais le ZIP dans ton gestionnaire de fichiers, puis ouvre **GlassTV-0.1.0-debug.apk** et choisis **Installer**.
+1. Sur la page qui s'ouvre, descends jusqu'à **Artifacts**.
+2. Clique sur **GlassTV-debug-apk**.
+3. Extrais le ZIP téléchargé, puis ouvre **GlassTV-0.1.0-debug.apk** et choisis **Installer**.
 
-[Lien de secours : ouvrir la compilation réussie, puis « Artifacts »](https://github.com/pacormn/GlassTv/actions/runs/41345612753)
+**Si GitHub affiche 404 :** vérifie que tu es connecté au compte **pacormn dans ce même navigateur sur la TV**, puis reviens sur cette page. Le dépôt est privé : être connecté sur ton téléphone ne connecte pas le navigateur de la TV.
+
+[Se connecter à GitHub](https://github.com/login)
 
 Ce téléchargement est conservé jusqu'au **1er décembre 2026**. Ensuite, [ouvre GitHub Actions](https://github.com/pacormn/GlassTv/actions/workflows/build-apk.yml) pour récupérer une compilation plus récente ou en relancer une.
 
