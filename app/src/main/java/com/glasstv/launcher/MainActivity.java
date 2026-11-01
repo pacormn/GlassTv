@@ -71,7 +71,7 @@ public class MainActivity extends Activity {
         unit=getResources().getDisplayMetrics().widthPixels/1920f;
         getWindow().getDecorView().setSystemUiVisibility(5894 | View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
         root=new FrameLayout(this); setContentView(root);
-        wallpaper=new Wallpaper(); root.addView(wallpaper,new FrameLayout.LayoutParams(-1,-1));
+        wallpaper=new Wallpaper(); wallpaper.setScaleX(1.06f);wallpaper.setScaleY(1.06f);root.addView(wallpaper,new FrameLayout.LayoutParams(-1,-1));
         buildHeader();
         scroll=new ScrollView(this); scroll.setClipChildren(false); scroll.setClipToPadding(false);
         scroll.setVerticalScrollBarEnabled(false); scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -99,6 +99,7 @@ public class MainActivity extends Activity {
     }
     @Override protected void onResume() {
         super.onResume(); resumed=true; root.setAlpha(1f);root.setScaleX(1);root.setScaleY(1);
+        if(panel!=null){root.removeView(panel);panel=null;}
         refreshApps(); handler.removeCallbacks(clockTick);clockTick.run();
     }
     @Override protected void onPause() { super.onPause();resumed=false;handler.removeCallbacks(clockTick);handler.removeCallbacks(singleMenu);handler.removeCallbacks(holdMenu);lastMenuUp=0;root.animate().cancel(); }
