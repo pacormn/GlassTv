@@ -19,9 +19,11 @@ jobs:
     steps:
       - name: Check private repository and successful source build
         run: |
-          test "$(gh api repos/$GH_REPO --jq .private)" = true
-          test "$(gh api repos/$GH_REPO/actions/runs/41345612753 --jq .conclusion)" = success
-          test "$(gh api repos/$GH_REPO/actions/runs/41345612753 --jq .head_sha)" = 7f26c38e951fb5fdd28e366b7663c737ccddb028
+          gh api repos/$GH_REPO --jq '{private: .private, visibility: .visibility}'
+          gh api repos/$GH_REPO/actions/runs/41345612753 --jq '{conclusion: .conclusion, head_sha: .head_sha}'
+          gh api repos/$GH_REPO > repo.json
+          gh api repos/$GH_REPO/actions/runs/41345612753 > run.json
+          python3 -c 'import json; r=json.load(open("repo.json")); b=json.load(open("run.json")); assert r["private"] is True, "Repository must remain private"; assert b["conclusion"] == "success", "Source build must succeed"; assert b["head_sha"] == "7f26c38e951fb5fdd28e366b7663c737ccddb028", "Unexpected source commit"'
       - name: Download the already verified APK
         run: |
           gh run download 41345612753 --name GlassTV-debug-apk --dir dist
