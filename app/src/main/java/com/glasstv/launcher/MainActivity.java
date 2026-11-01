@@ -34,6 +34,10 @@ public class MainActivity extends Activity {
     private boolean resumed, reduced, rebuilding;
     private float unit;
     private int palette;
+    private boolean menuHeld;
+    private long lastMenuUp;
+    private final Runnable singleMenu=()->runRemoteAction(prefs.getInt("menu_single",0));
+    private final Runnable holdMenu=()->{menuHeld=true;handler.removeCallbacks(singleMenu);lastMenuUp=0;runRemoteAction(prefs.getInt("menu_hold",1));};
     private final Runnable clockTick = new Runnable() {
         public void run() {
             if (!resumed) return;
@@ -80,7 +84,7 @@ public class MainActivity extends Activity {
     }
     private void buildHeader() {
         TextView brand=text("GlassTV",28,0xbbffffff);
-        brand.setTypeface(Typeface.create("sans-serif-medium",0));root.addView(brand,frame(260,40,Gravity.TOP,112,63));
+        brand.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));root.addView(brand,frame(260,40,Gravity.TOP,112,63));
         time=text("",30,0xddffffff);time.setGravity(Gravity.RIGHT);
         root.addView(time,frame(145,45,Gravity.TOP,1510,60));
         TextView button=text("◉",35,Color.WHITE);button.setGravity(Gravity.CENTER);button.setContentDescription("Centre de contrôle");
@@ -88,7 +92,7 @@ public class MainActivity extends Activity {
         button.setOnClickListener(v->showControls());
         button.setOnFocusChangeListener((v,focus)->{v.animate().scaleX(focus?1.12f:1).scaleY(focus?1.12f:1).setDuration(duration(180)).start();});
         root.addView(button,frame(66,66,Gravity.TOP,1735,48));
-        heroTitle=text("Bienvenue chez vous.",64,Color.WHITE);heroTitle.setTypeface(Typeface.create("sans-serif-medium",0));
+        heroTitle=text("Bienvenue chez vous.",64,Color.WHITE);heroTitle.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
         root.addView(heroTitle,frame(1450,90,Gravity.TOP,112,175));
         heroSubtitle=text("Vos applications. Au premier plan.",27,0xaaffffff);
         root.addView(heroSubtitle,frame(1450,50,Gravity.TOP,115,265));
@@ -97,7 +101,7 @@ public class MainActivity extends Activity {
         super.onResume(); resumed=true; root.setAlpha(1f);root.setScaleX(1);root.setScaleY(1);
         refreshApps(); handler.removeCallbacks(clockTick);clockTick.run();
     }
-    @Override protected void onPause() { super.onPause();resumed=false;handler.removeCallbacks(clockTick);root.animate().cancel(); }
+    @Override protected void onPause() { super.onPause();resumed=false;handler.removeCallbacks(clockTick);handler.removeCallbacks(singleMenu);handler.removeCallbacks(holdMenu);lastMenuUp=0;root.animate().cancel(); }
     @Override protected void onDestroy() { handler.removeCallbacksAndMessages(null);super.onDestroy(); }
     private void refreshApps() {
         String selected=lastFocus instanceof Card?((Card)lastFocus).app.pkg:"";
@@ -200,6 +204,8 @@ public class MainActivity extends Activity {
         TextView first=control(sheet,"Réglages Android TV",()->{try{startActivity(new Intent(Settings.ACTION_SETTINGS));}catch(android.content.ActivityNotFoundException e){Toast.makeText(this,"Réglages indisponibles",Toast.LENGTH_SHORT).show();}});
         control(sheet,"Ambiance  ·  "+new String[]{"Crépuscule","Océan","Minuit"}[palette],()->new AlertDialog.Builder(this).setTitle("Ambiance").setSingleChoiceItems(new String[]{"Crépuscule","Océan","Minuit"},palette,(d,which)->{palette=which;prefs.edit().putInt("palette",which).apply();wallpaper.reset();d.dismiss();closeControls();}).show());
         control(sheet,"Animations  ·  "+(reduced?"Réduites":"Fluides"),()->{reduced=!reduced;prefs.edit().putBoolean("reduced",reduced).apply();closeControls();});
+        control(sheet,"Définir comme accueil",this::requestHome);
+        control(sheet,"Télécommande",this::remoteSettings);
         control(sheet,"Actualiser les applications",()->{closeControls();refreshApps();});
         TextView close=control(sheet,"Fermer",this::closeControls);first.setNextFocusUpId(first.getId());close.setNextFocusDownId(close.getId());
         TextView version=text("GlassTV 0.2.0  •  Interface locale",19,0x88ffffff);version.setPadding(0,px(25),0,0);sheet.addView(version);
@@ -213,7 +219,63 @@ public class MainActivity extends Activity {
     }
     private void closeControls(){if(panel==null)return;root.removeView(panel);panel=null;if(lastFocus!=null)lastFocus.requestFocus();}
     @Override public void onBackPressed(){if(panel!=null)closeControls();else if(!cards.isEmpty()){scroll.smoothScrollTo(0,0);cards.get(0).requestFocus();}}
-    @Override public boolean dispatchKeyEvent(KeyEvent event){if(event.getKeyCode()==KeyEvent.KEYCODE_MENU){if(event.getAction()==KeyEvent.ACTION_DOWN&&event.getRepeatCount()==0){if(panel==null)showControls();else closeControls();}return true;}return super.dispatchKeyEvent(event);}
+    private void requestHome() {
+        try {
+            if(android.os.Build.VERSION.SDK_INT>=29) {
+                android.app.role.RoleManager roles=getSystemService(android.app.role.RoleManager.class);
+                if(roles!=null && roles.isRoleAvailable(android.app.role.RoleManager.ROLE_HOME)) {
+                    if(roles.isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) {
+                        Toast.makeText(this,"GlassTV est déjà votre accueil",Toast.LENGTH_SHORT).show();return;
+                    }
+                    startActivityForResult(roles.createRequestRoleIntent(android.app.role.RoleManager.ROLE_HOME),41);return;
+                }
+            }
+            startActivity(new Intent(Settings.ACTION_HOME_SETTINGS));
+        } catch(android.content.ActivityNotFoundException | SecurityException ex) {
+            new AlertDialog.Builder(this).setTitle("Bouton Maison")
+                .setMessage("Ce firmware ne propose pas le choix de l’accueil ici. Un remappage du bouton Maison ou une configuration ADB peut être nécessaire. Gardez l’accueil système actif tant que GlassTV n’est pas configuré.")
+                .setPositiveButton("Compris",null).show();
+        }
+    }
+    private void remoteSettings() {
+        final String[] keys={"menu_single","menu_double","menu_hold"};
+        final int[] defaults={0,3,1};
+        final String[] actions={"Centre de contrôle","Réglages Android TV","Retour en haut","Changer l’ambiance","Actualiser les applications"};
+        new AlertDialog.Builder(this).setTitle("Touche Menu dans GlassTV")
+            .setItems(new String[]{"Appui simple","Double appui","Appui long"},(dialog,index)->
+                new AlertDialog.Builder(this).setTitle("Choisir une action")
+                    .setSingleChoiceItems(actions,prefs.getInt(keys[index],defaults[index]),(picker,action)->{
+                        prefs.edit().putInt(keys[index],action).apply();picker.dismiss();
+                    }).setNegativeButton("Annuler",null).show())
+            .setNegativeButton("Fermer",null).show();
+    }
+    private void runRemoteAction(int action) {
+        if(!resumed)return;
+        switch(action) {
+            case 0: if(panel==null)showControls();else closeControls();break;
+            case 1: try{startActivity(new Intent(Settings.ACTION_SETTINGS));}catch(android.content.ActivityNotFoundException e){Toast.makeText(this,"Réglages indisponibles",Toast.LENGTH_SHORT).show();}break;
+            case 2: closeControls();onBackPressed();break;
+            case 3: palette=(palette+1)%3;prefs.edit().putInt("palette",palette).apply();wallpaper.reset();break;
+            case 4: closeControls();refreshApps();break;
+            default: break;
+        }
+    }
+    @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        if(event.getKeyCode()!=KeyEvent.KEYCODE_MENU)return super.dispatchKeyEvent(event);
+        if(event.getAction()==KeyEvent.ACTION_DOWN && event.getRepeatCount()==0) {
+            menuHeld=false;handler.postDelayed(holdMenu,650);
+        } else if(event.getAction()==KeyEvent.ACTION_UP) {
+            handler.removeCallbacks(holdMenu);
+            if(event.isCanceled()){handler.removeCallbacks(singleMenu);lastMenuUp=0;return true;}
+            if(!menuHeld) {
+                long now=android.os.SystemClock.uptimeMillis();
+                if(lastMenuUp!=0 && now-lastMenuUp<320) {
+                    handler.removeCallbacks(singleMenu);lastMenuUp=0;runRemoteAction(prefs.getInt("menu_double",3));
+                } else {lastMenuUp=now;handler.postDelayed(singleMenu,320);}
+            }
+        }
+        return true;
+    }
     private class Wallpaper extends View {
         final Paint paint=new Paint(3);final Path wave=new Path();Shader base,glow,shade;
         Wallpaper(){super(MainActivity.this);setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);}
