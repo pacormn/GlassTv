@@ -2,17 +2,14 @@
 
 ## Télécharger sur la TV
 
-### [⬇ Ouvrir le téléchargement de GlassTV](https://github.com/pacormn/GlassTv/actions/runs/41345612753)
+### [⬇ Télécharger directement GlassTV.apk](https://github.com/pacormn/GlassTv/releases/download/v0.1.0/GlassTV-0.1.0-debug.apk)
 
-1. Sur la page qui s'ouvre, descends jusqu'à **Artifacts**.
-2. Clique sur **GlassTV-debug-apk**.
-3. Extrais le ZIP téléchargé, puis ouvre **GlassTV-0.1.0-debug.apk** et choisis **Installer**.
+**APK prêt à installer, sans ZIP à extraire et sans connexion GitHub.**
+Depuis le navigateur de la TV ou Downloader, clique sur le lien ci-dessus, puis ouvre **GlassTV-0.1.0-debug.apk** et choisis **Installer**.
 
-**Si GitHub affiche 404 :** vérifie que tu es connecté au compte **pacormn dans ce même navigateur sur la TV**, puis reviens sur cette page. Le dépôt est privé : être connecté sur ton téléphone ne connecte pas le navigateur de la TV.
+[Ouvrir la Release et ses fichiers](https://github.com/pacormn/GlassTv/releases/tag/v0.1.0)
 
-[Se connecter à GitHub](https://github.com/login)
-
-Ce téléchargement est conservé jusqu'au **1er décembre 2026**. Ensuite, [ouvre GitHub Actions](https://github.com/pacormn/GlassTv/actions/workflows/build-apk.yml) pour récupérer une compilation plus récente ou en relancer une.
+Version de test 0.1.0 pour Android TV 11. Contrairement aux artifacts Actions, ce fichier de Release n'expire pas après 30 jours.
 
 Prototype **original** de launcher TV, inspiré de l'esthétique translucide de tvOS 26, conçu pour Xiaomi TV Box S 2e génération (Android TV 11). Ce projet n'est pas affilié à Apple.
 
@@ -58,7 +55,7 @@ Si le launcher ne s'affiche pas comme accueil, ouvrir les paramètres Android TV
 - minSdk 28 (Android 9) : Android TV 11 / API 30 est pris en charge.
 - APK universel sans bibliothèques natives : pas de restriction ARM 32/64 bits.
 - Navigation dernière ligne corrigée, lancement au relâchement de OK et appui long pour actualiser.
-- CI : compilation, lint, vérification de signature et manifeste, SHA-256, APK privé conservé 30 jours.
+- CI : compilation, lint, vérification de signature et manifeste, SHA-256, artifact Actions conservé 30 jours, APK également disponible en Release.
 - Les essais physiques sur la Xiaomi restent à réaliser.
 
 ## Installation
@@ -74,4 +71,4 @@ Une compilation sur un nouveau runner peut changer cette signature et nécessite
 une désinstallation avant réinstallation. Une clé de signature stable, conservée
 dans les secrets GitHub, devra être mise en place avant les mises à jour durables.
 Aucun contrôle ni installation automatique de mise à jour n'est implémenté.
-Le dépôt et les artifacts restent privés ; aucun token GitHub n'est embarqué dans l'app.
+Le propriétaire a rendu le dépôt public et autorisé la publication de l'APK en Release. Aucun token GitHub n'est embarqué dans l'app.
