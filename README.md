@@ -1,5 +1,15 @@
 # GlassTV — Android TV Launcher
 
+## Télécharger sur la TV
+
+### [⬇ Télécharger GlassTV 0.1.0 — APK dans un ZIP](https://github.com/pacormn/GlassTv/actions/runs/41345612753/artifacts/13099470598)
+
+Connexion à ton compte GitHub requise. Après téléchargement, extrais le ZIP dans ton gestionnaire de fichiers, puis ouvre **GlassTV-0.1.0-debug.apk** et choisis **Installer**.
+
+[Lien de secours : ouvrir la compilation réussie, puis « Artifacts »](https://github.com/pacormn/GlassTv/actions/runs/41345612753)
+
+Ce téléchargement est conservé jusqu'au **1er décembre 2026**. Ensuite, [ouvre GitHub Actions](https://github.com/pacormn/GlassTv/actions/workflows/build-apk.yml) pour récupérer une compilation plus récente ou en relancer une.
+
 Prototype **original** de launcher TV, inspiré de l'esthétique translucide de tvOS 26, conçu pour Xiaomi TV Box S 2e génération (Android TV 11). Ce projet n'est pas affilié à Apple.
 
 ## Ce qui fonctionne dans cette première version
