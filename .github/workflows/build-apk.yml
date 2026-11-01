@@ -34,7 +34,7 @@ jobs:
       - name: Verify APK signature and Android compatibility
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.1.0-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.2.0-debug.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose dist/*.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/*.apk | tee dist/apk-info.txt
           grep -q "sdkVersion:'28'" dist/apk-info.txt
@@ -53,3 +53,70 @@ jobs:
           name: GlassTV-lint-report
           path: app/build/reports/lint-results-debug.*
           if-no-files-found: ignore
+
+  smoke:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: GlassTV-debug-apk
+          path: dist
+      - name: Enable emulator acceleration
+        run: sudo chmod 666 /dev/kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb shell wm size 1920x1080
+            adb shell wm density 320
+            adb install dist/GlassTV-0.2.0-debug.apk
+            adb shell am start -W -n com.glasstv.launcher/.MainActivity
+            sleep 3
+            mkdir -p screenshots
+            adb exec-out screencap -p > screenshots/home.png
+            adb shell input keyevent 22
+            sleep 1
+            adb exec-out screencap -p > screenshots/focus.png
+            adb shell input keyevent 82
+            sleep 1
+            adb exec-out screencap -p > screenshots/controls.png
+            adb shell input keyevent 4
+            adb shell dumpsys activity activities | grep -E 'mResumedActivity.*com.glasstv.launcher'
+            adb logcat -d -b crash > screenshots/crash.txt
+            test ! -s screenshots/crash.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: GlassTV-Android11-screenshots
+          path: screenshots/
+  release:
+    needs: [build, smoke]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: GlassTV-debug-apk
+          path: dist
+      - name: Publish installable preview APK
+        run: |
+          if gh release view v0.2.0 >/dev/null 2>&1; then exit 0; fi
+          cat > notes.md <<'NOTES'
+          Nouvelle interface inspirée de tvOS : dock translucide, bannières TV, animations de focus, parallaxe, centre de contrôle et favoris (appui long OK).
+          Trois ambiances et option animations réduites.
+          APK de test pour Android TV 11, compilé et testé sur émulateur API 30.
+          Installer GlassTV-0.2.0-debug.apk. Si Android refuse la mise à jour à cause de la signature debug, désinstaller la version 0.1.0 puis installer celle-ci.
+          Aucun service Apple intégré et aucune mise à jour automatique.
+          NOTES
+          gh release create v0.2.0 dist/GlassTV-0.2.0-debug.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.2.0 — Nouvelle interface TV" --notes-file notes.md --prerelease
