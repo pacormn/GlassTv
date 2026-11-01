@@ -1,0 +1,44 @@
+name: Publish verified GlassTV 0.1.0 APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/release-0.1.0.yml']
+permissions:
+  contents: read
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Check private repository and successful source build
+        run: |
+          test "$(gh api repos/$GH_REPO --jq .private)" = true
+          test "$(gh api repos/$GH_REPO/actions/runs/41345612753 --jq .conclusion)" = success
+          test "$(gh api repos/$GH_REPO/actions/runs/41345612753 --jq .head_sha)" = 7f26c38e951fb5fdd28e366b7663c737ccddb028
+      - name: Download the already verified APK
+        run: |
+          gh run download 41345612753 --name GlassTV-debug-apk --dir dist
+          cd dist
+          sha256sum -c SHA256SUMS.txt
+      - name: Publish private prerelease with installable APK
+        run: |
+          cat > notes.md <<'NOTES'
+          Première version de test GlassTV pour Xiaomi TV Box S 2e génération, Android TV 11.
+          
+          Télécharger GlassTV-0.1.0-debug.apk dans Assets, puis ouvrir ce fichier sur la box pour l'installer. Aucun ZIP à extraire.
+          
+          APK issu de la compilation validée 41345612753 : compilation, lint et signature vérifiés. Test matériel encore nécessaire.
+          Version debug : une future compilation peut nécessiter une désinstallation avant réinstallation. Les mises à jour intégrées ne sont pas encore disponibles.
+          NOTES
+          if gh release view v0.1.0 >/dev/null 2>&1; then
+            echo "Release already exists; leaving its assets unchanged."
+            exit 0
+          fi
+          gh release create v0.1.0 dist/GlassTV-0.1.0-debug.apk dist/SHA256SUMS.txt dist/apk-info.txt --target 7f26c38e951fb5fdd28e366b7663c737ccddb028 --title "GlassTV 0.1.0 — Android TV" --notes-file notes.md --prerelease
