@@ -34,7 +34,7 @@ jobs:
       - name: Verify APK signature and Android compatibility
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.2.0-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.3.0-debug.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose dist/*.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/*.apk | tee dist/apk-info.txt
           grep -q "sdkVersion:'28'" dist/apk-info.txt
@@ -75,7 +75,7 @@ jobs:
           script: |
             adb shell wm size 1920x1080
             adb shell wm density 320
-            adb install dist/GlassTV-0.2.0-debug.apk
+            adb install dist/GlassTV-0.3.0-debug.apk
             adb shell am start -W -n com.glasstv.launcher/.MainActivity
             sleep 3
             mkdir -p screenshots
@@ -111,12 +111,13 @@ jobs:
           path: dist
       - name: Publish installable preview APK
         run: |
-          if gh release view v0.2.0 >/dev/null 2>&1; then exit 0; fi
+          if gh release view v0.3.0 >/dev/null 2>&1; then exit 0; fi
           cat > notes.md <<'NOTES'
           Nouvelle interface inspirée de tvOS : dock translucide, bannières TV, animations de focus, parallaxe, centre de contrôle et favoris (appui long OK).
           Trois ambiances et option animations réduites.
           APK de test pour Android TV 11, compilé et testé sur émulateur API 30.
-          Installer GlassTV-0.2.0-debug.apk. Si Android refuse la mise à jour à cause de la signature debug, désinstaller la version 0.1.0 puis installer celle-ci.
+          Installer GlassTV-0.3.0-debug.apk. Si Android refuse la mise à jour à cause de la signature debug, désinstaller la version 0.1.0 puis installer celle-ci.
           Aucun service Apple intégré et aucune mise à jour automatique.
           NOTES
-          gh release create v0.2.0 dist/GlassTV-0.2.0-debug.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.2.0 — Nouvelle interface TV" --notes-file notes.md --prerelease
+          gh release create v0.3.0 dist/GlassTV-0.3.0-debug.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.3.0 — Nouvelle interface TV" --notes-file notes.md --prerelease
+
