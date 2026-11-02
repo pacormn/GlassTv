@@ -81,6 +81,8 @@ public class MainActivity extends Activity {
             prefs.edit().putString("backdrop",uri.toString()).apply();loadBackdrop(uri);
         }
     }
+    private boolean backHeld;
+    private final Runnable holdBack=()->{backHeld=true;if(panel==null)showControls();};
     private boolean menuHeld;
     private long lastMenuUp;
     private final Runnable singleMenu=()->runRemoteAction(prefs.getInt("menu_single",0));
@@ -143,7 +145,7 @@ public class MainActivity extends Activity {
         content=new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL);
         content.setClipChildren(false); content.setClipToPadding(false); content.setPadding(px(110),px(575),px(110),px(100));
         scroll.addView(content); FrameLayout.LayoutParams sp=frame(-1,-1,Gravity.TOP,0,145);sp.bottomMargin=px(70);root.addView(scroll,sp);
-        controls=text("OK  Ouvrir     •     Maintenir OK  Organiser     •     Menu  Centre de contrôle",21,0x99ffffff);
+        controls=text("OK  Ouvrir     •     Maintenir OK  Organiser     •     Maintenir Retour  Réglages",21,0x99ffffff);
         FrameLayout.LayoutParams cp=frame(-2,30,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL,0,0);cp.bottomMargin=px(27);root.addView(controls,cp);
     }
     private void buildHeader() {
@@ -166,7 +168,7 @@ public class MainActivity extends Activity {
         if(panel!=null)closeControls();
         refreshApps(); handler.removeCallbacks(clockTick);clockTick.run();
     }
-    @Override protected void onPause() { super.onPause();resumed=false;handler.removeCallbacks(clockTick);handler.removeCallbacks(singleMenu);handler.removeCallbacks(holdMenu);lastMenuUp=0;root.animate().cancel(); }
+    @Override protected void onPause() { super.onPause();resumed=false;handler.removeCallbacks(clockTick);handler.removeCallbacks(holdBack);handler.removeCallbacks(singleMenu);handler.removeCallbacks(holdMenu);lastMenuUp=0;root.animate().cancel(); }
     @Override protected void onDestroy() { if(pageAnimator!=null)pageAnimator.cancel();images.shutdownNow();handler.removeCallbacksAndMessages(null);super.onDestroy(); }
     private void refreshApps() {
         String selected=lastFocus instanceof Card?((Card)lastFocus).app.pkg:"";
@@ -330,7 +332,9 @@ public class MainActivity extends Activity {
                 android.app.role.RoleManager roles=getSystemService(android.app.role.RoleManager.class);
                 if(roles!=null && roles.isRoleAvailable(android.app.role.RoleManager.ROLE_HOME)) {
                     if(roles.isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) {
-                        Toast.makeText(this,"GlassTV est déjà votre accueil",Toast.LENGTH_SHORT).show();return;
+                        new AlertDialog.Builder(this).setTitle("Accueil enregistré")
+                            .setMessage("Android a bien enregistré GlassTV comme accueil. Si la touche Maison ouvre encore Android TV, le firmware ou le comportement de la télécommande impose ce lancement. Un remappage global de Maison peut être nécessaire.")
+                            .setPositiveButton("Compris",null).show();return;
                     }
                     startActivityForResult(roles.createRequestRoleIntent(android.app.role.RoleManager.ROLE_HOME),41);return;
                 }
@@ -367,6 +371,11 @@ public class MainActivity extends Activity {
     }
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         int key=event.getKeyCode();
+        if(key==KeyEvent.KEYCODE_BACK) {
+            if(event.getAction()==KeyEvent.ACTION_DOWN&&event.getRepeatCount()==0){backHeld=false;handler.postDelayed(holdBack,650);}
+            else if(event.getAction()==KeyEvent.ACTION_UP){handler.removeCallbacks(holdBack);if(!backHeld&&!event.isCanceled())onBackPressed();}
+            return true;
+        }
         if(panel!=null&&(key==KeyEvent.KEYCODE_DPAD_DOWN||key==KeyEvent.KEYCODE_DPAD_UP||key==KeyEvent.KEYCODE_DPAD_LEFT||key==KeyEvent.KEYCODE_DPAD_RIGHT)) {
             if(event.getAction()==KeyEvent.ACTION_DOWN){
                 int i=panelButtons.indexOf(getCurrentFocus());if(i<0)i=0;
