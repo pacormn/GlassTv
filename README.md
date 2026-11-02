@@ -1,84 +1,58 @@
-# GlassTV — Android TV Launcher
+# GlassTV
 
-## Télécharger sur la TV
+## Installer sur la TV
 
-### [⬇ Télécharger directement GlassTV.apk](https://github.com/pacormn/GlassTv/releases/download/v0.3.0/GlassTV-0.3.0-debug.apk)
+### [⬇ Télécharger GlassTV 0.4.1.apk](https://github.com/pacormn/GlassTv/releases/download/v0.4.1/GlassTV-0.4.1-debug.apk)
 
-**APK prêt à installer, sans ZIP à extraire et sans connexion GitHub.**
-Depuis le navigateur de la TV ou Downloader, clique sur le lien ci-dessus, puis ouvre **GlassTV-0.3.0-debug.apk** et choisis **Installer**.
+Ouvrir ce lien dans le navigateur de la TV ou Downloader puis installer l'APK.
+[Voir les fichiers de la Release](https://github.com/pacormn/GlassTv/releases/tag/v0.4.1).
 
-[Ouvrir la Release et ses fichiers](https://github.com/pacormn/GlassTv/releases/tag/v0.1.0)
+Les APK utilisent actuellement des signatures debug de runners distincts. Si Android refuse la mise à jour pour incompatibilité de signature, désinstaller l'ancienne version puis installer celle-ci (les réglages seront effacés). Une clé de signature durable reste nécessaire pour garantir les mises à jour sur place entre toutes les compilations.
 
-Version de test 0.1.0 pour Android TV 11. Contrairement aux artifacts Actions, ce fichier de Release n'expire pas après 30 jours.
+## Accueil épuré
 
-Prototype **original** de launcher TV, inspiré de l'esthétique translucide de tvOS 26, conçu pour Xiaomi TV Box S 2e génération (Android TV 11). Ce projet n'est pas affilié à Apple.
+- « Bonjour Paco » entre 6 h et 18 h, puis « Bonsoir Paco », selon l'heure de la box ; actualisé pendant l'utilisation.
+- Aucun nom GlassTV ni sous-titre d'application dans l'en-tête.
+- Cinq emplacements fixes de favoris, sans sixième tuile. Les emplacements libres sont remplis avec d'autres applications installées ; si moins de cinq applications existent, des emplacements visuels vides complètent la rangée.
+- Appui long OK sur une application : choisir l'un des cinq emplacements à remplacer. Une application déjà favorite échange sa place avec celle choisie.
+- Descendre révèle toutes les applications, avec un défilement animé à ralentissement progressif, un fondu de la salutation et une atténuation du fond. Les animations réduites restent disponibles.
+- Bannière personnalisable depuis le centre de contrôle, via le sélecteur Android. Les suggestions cinéma et historiques vidéo ne sont pas connectés.
 
-## Version 0.3.0
+## Télécommande Xiaomi
 
-- Accueil avec favoris seuls ; descendre révèle la grille complète des applications.
-- Appui long OK : ajouter ou retirer un favori. Sans favoris enregistrés, cinq applications sont proposées au premier lancement uniquement.
-- Les tuiles sélectionnées sont ramenées dans la zone visible, avec une marge pour leur agrandissement.
-- Centre de contrôle défilant : navigation isolée du contenu derrière, jusqu'au bouton Fermer.
-- Centre de contrôle → Choisir la bannière : sélectionner une image locale avec le sélecteur Android. Un gestionnaire de fichiers compatible peut être nécessaire.
-- Les suggestions cinéma et les historiques de Netflix/YouTube ne sont pas connectés dans cette version. Le fond procédural reste affiché tant qu'aucune image n'a été choisie.
-- Compilation, lint et tests sur émulateur Android 11 réussis : dernier bouton du panneau et visibilité de la sélection. Validation sur la Xiaomi réelle encore nécessaire.
+| Touche | Action dans GlassTV |
+| --- | --- |
+| Flèches | Naviguer |
+| OK | Ouvrir |
+| Maintenir OK | Choisir un emplacement favori |
+| Retour | Fermer le panneau ou revenir à l'accueil |
+| Maintenir Retour | Ouvrir le centre de contrôle |
+| Bouton en haut à droite | Ouvrir le centre de contrôle |
 
-## Ce qui fonctionne dans cette première version
+Les gestes Menu restent disponibles pour les télécommandes qui transmettent cette touche.
 
-- Interface TV 16:9, contrôlable à la télécommande (flèches + OK)
-- Détection et ouverture des applications TV installées, sans liste codée en dur
-- Grille de tuiles translucides, focus agrandi, horloge
-- Fond panoramique animé dessiné localement (aucun téléchargement, aucune vidéo sous licence)
-- Défilement vertical automatique, actualisation des applications au retour à l'accueil
-- Pas de permission Internet, pas de SDK analytics, pas de publicité, pas de root
-- Activité HOME/LEANBACK pour pouvoir choisir GlassTV comme launcher
+Le centre de contrôle défile et conserve le focus dans son panneau, jusqu'au dernier bouton, sans naviguer vers les applications derrière.
 
-## Limites actuelles
+« Définir comme accueil » utilise le rôle Android HOME. Un firmware Xiaomi peut continuer à ouvrir Android TV via la touche Maison même si ce rôle est attribué à GlassTV. Un remappage global distinct, configuré sur la box, peut alors être nécessaire. GlassTV ne désactive pas le launcher système. Google, volume, Netflix et Prime restent gérés par Android.
 
-- Le rendu *Liquid Glass* est une interprétation : transparence et reflets, pas un véritable flou de réfraction de tvOS.
-- Le paysage est une animation procédurale, pas une vidéo 4K aérienne.
-- La navigation et les ouvertures d'applications sont fonctionnelles, mais l'interface reste un **MVP** ; pas encore de réglages, favoris, réorganisation, météo ou prévisualisations vidéo.
-- Les pubs et traceurs **des applications tierces et du système Xiaomi/Google** ne sont pas supprimés par ce launcher.
-- Le launcher par défaut dépend du firmware ; ne pas désactiver le launcher système avant d'avoir testé GlassTV.
+## Mises à jour
 
-## Compiler sur GitHub sans PC
+Activées par défaut à la demande du propriétaire :
+- Recherche des Releases du dépôt au retour dans GlassTV, au maximum une fois toutes les six heures. Aucune recherche périodique lorsque GlassTV n'est pas actif.
+- Téléchargement automatique d'une version plus récente par le gestionnaire Android.
+- Vérification SHA-256 avant de proposer l'installation.
+- Confirmation via l'installateur Android et autorisation d'installation depuis GlassTV si nécessaire.
+- Options « Mises à jour auto » et « Rechercher une mise à jour » dans le centre de contrôle.
 
-1. Créer un dépôt GitHub et y importer **le contenu du dossier GlassTV** (y compris `.github/workflows/build-apk.yml`).
-2. Aller dans **Actions > Build GlassTV APK > Run workflow**.
-3. Télécharger l'artifact `GlassTV-debug-apk` à la fin de la compilation.
-4. Installer `app-debug.apk` sur la box via une application de transfert de fichiers / installateur APK compatible Android TV.
-5. Ouvrir GlassTV, tester la télécommande et les applications, puis seulement ensuite essayer de le définir comme accueil par défaut.
+Les préversions de ce dépôt sont incluses. Une installation silencieuse n'est pas implémentée. Les signatures debug différentes peuvent empêcher l'installation sur place. La vérification d'empreinte ne corrige pas cette incompatibilité.
 
-Autre méthode : Android Studio avec JDK 17, Android SDK 35, Gradle 8.10.2, puis `gradle :app:assembleDebug`.
+## Compilation et validation
 
-## Sécurité / confidentialité
+Android 9 minimum / API 28, cible API 35, compatible Android TV 11 / API 30. APK universel sans bibliothèque native.
+Java 17, Android Gradle Plugin 8.6.1 et Gradle 8.10.2.
 
-L'application ne demande aucune permission réseau et ne contient pas de code de télémétrie. Elle lit uniquement les activités de lancement des applications installées. Aucune commande ADB destructive n'est requise pour tester l'APK.
+GitHub Actions compile, exécute lint, vérifie la signature, teste le démarrage et la navigation dans un émulateur Android 11, puis publie une préversion avec APK et SHA-256. Le test vérifie la sélection du dernier bouton du centre de contrôle et la visibilité de la sélection dans la grille.
 
-## Dépannage
+La détection et l'installation d'une future mise à jour n'ont pas encore été validées de bout en bout sur la Xiaomi physique. La fluidité réelle et les particularités des touches restent à vérifier sur la box.
 
-Si le launcher ne s'affiche pas comme accueil, ouvrir les paramètres Android TV pour vérifier les applications par défaut. Sur certains firmwares Xiaomi, le choix du launcher nécessite ADB. Ne jamais désactiver le launcher d'origine sans avoir confirmé qu'une méthode de restauration fonctionne.
-
-## Validation de cette version
-
-- Compilation Java 17 / Android Gradle Plugin 8.6.1 / Gradle 8.10.2.
-- minSdk 28 (Android 9) : Android TV 11 / API 30 est pris en charge.
-- APK universel sans bibliothèques natives : pas de restriction ARM 32/64 bits.
-- Navigation dernière ligne corrigée, lancement au relâchement de OK et appui long pour actualiser.
-- CI : compilation, lint, vérification de signature et manifeste, SHA-256, artifact Actions conservé 30 jours, APK également disponible en Release.
-- Les essais physiques sur la Xiaomi restent à réaliser.
-
-## Installation
-
-Dans GitHub, ouvrir Actions, puis une exécution réussie de **Build GlassTV APK**,
-et télécharger **GlassTV-debug-apk** (connexion au compte requise).
-Extraire le ZIP et transférer **GlassTV-0.3.0-debug.apk** vers la box.
-Autoriser temporairement l'installation depuis l'application de transfert utilisée,
-puis ouvrir l'APK et lancer GlassTV depuis les applications.
-
-Cet APK est une version de test signée avec la clé debug générée par le runner.
-Une compilation sur un nouveau runner peut changer cette signature et nécessiter
-une désinstallation avant réinstallation. Une clé de signature stable, conservée
-dans les secrets GitHub, devra être mise en place avant les mises à jour durables.
-Aucun contrôle ni installation automatique de mise à jour n'est implémenté.
-Le propriétaire a rendu le dépôt public et autorisé la publication de l'APK en Release. Aucun token GitHub n'est embarqué dans l'app.
+L'application demande Internet pour les mises à jour et l'autorisation de demander une installation. Aucune télémétrie ni publicité. Le dépôt et les Releases sont publics par choix du propriétaire. L'interface est inspirée de tvOS sans affiliation à Apple ni services Apple intégrés.
