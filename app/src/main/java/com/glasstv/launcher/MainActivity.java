@@ -35,6 +35,7 @@ public class MainActivity extends Activity {
     private float unit;
     private int palette;
     private boolean appsPage;
+    private android.animation.ValueAnimator pageAnimator;
     private final ArrayList<Card> dockCards=new ArrayList<>();
     private final ArrayList<Card> gridCards=new ArrayList<>();
     private final ArrayList<TextView> panelButtons=new ArrayList<>();
@@ -52,9 +53,7 @@ public class MainActivity extends Activity {
             int margin=px(32),y=scroll.getScrollY();
             int target=appsPage?Math.max(0,bounds.top-margin):0;
             if(bounds.bottom+margin>target+scroll.getHeight())target=bounds.bottom+margin-scroll.getHeight();
-            scroll.smoothScrollTo(0,Math.max(0,target));
-            heroTitle.setVisibility(appsPage?View.INVISIBLE:View.VISIBLE);
-            heroSubtitle.setVisibility(appsPage?View.INVISIBLE:View.VISIBLE);
+            animatePage(Math.max(0,target),appsPage);
         });
     }
     private void loadBackdrop(android.net.Uri uri) {
@@ -89,12 +88,24 @@ public class MainActivity extends Activity {
     private final Runnable clockTick = new Runnable() {
         public void run() {
             if (!resumed) return;
+            heroTitle.setText(greeting());
             time.setText(new SimpleDateFormat("HH:mm", Locale.FRANCE).format(new Date()));
             handler.postDelayed(this, 10000);
         }
     };
     private static class App {
         String pkg, label; Intent launch; Drawable art; boolean banner;
+    }
+    private String greeting(){int hour=Calendar.getInstance().get(Calendar.HOUR_OF_DAY);return (hour>=6&&hour<18?"Bonjour":"Bonsoir")+" Paco";}
+    private void animatePage(int target,boolean grid){
+        if(pageAnimator!=null)pageAnimator.cancel();
+        heroTitle.animate().cancel();heroTitle.animate().alpha(grid?0:1).translationY(grid?-px(18):0).setDuration(duration(280)).start();
+        backdrop.animate().alpha(grid?.35f:.8f).setDuration(duration(420)).start();
+        if(reduced){scroll.scrollTo(0,target);return;}
+        pageAnimator=android.animation.ValueAnimator.ofInt(scroll.getScrollY(),target);
+        pageAnimator.setDuration(460);
+        pageAnimator.setInterpolator(new android.view.animation.PathInterpolator(.22f,1f,.36f,1f));
+        pageAnimator.addUpdateListener(a->scroll.scrollTo(0,(Integer)a.getAnimatedValue()));pageAnimator.start();
     }
     private int px(float n) { return Math.round(n * unit); }
     private int duration(int ms) { return reduced ? 0 : ms; }
@@ -124,18 +135,20 @@ public class MainActivity extends Activity {
         View veil=new View(this);veil.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{0x33000000,0x11000000,0xee060914}));root.addView(veil,new FrameLayout.LayoutParams(-1,-1));
         String saved=prefs.getString("backdrop","");if(!saved.isEmpty())loadBackdrop(android.net.Uri.parse(saved));
         buildHeader();
-        scroll=new ScrollView(this); scroll.setClipChildren(false); scroll.setClipToPadding(false);
+        scroll=new ScrollView(this){
+            @Override public void requestChildFocus(View child,View focused){int y=getScrollY();super.requestChildFocus(child,focused);scrollTo(0,y);}
+        }; scroll.setClipChildren(false); scroll.setClipToPadding(false);
         scroll.setVerticalScrollBarEnabled(false); scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
         scroll.setFillViewport(false); scroll.setSmoothScrollingEnabled(true);
         content=new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL);
         content.setClipChildren(false); content.setClipToPadding(false); content.setPadding(px(110),px(575),px(110),px(100));
         scroll.addView(content); FrameLayout.LayoutParams sp=frame(-1,-1,Gravity.TOP,0,145);sp.bottomMargin=px(70);root.addView(scroll,sp);
-        controls=text("OK  Ouvrir     •     Maintenir OK  Favoris     •     Menu  Centre de contrôle",21,0x99ffffff);
+        controls=text("OK  Ouvrir     •     Maintenir OK  Organiser     •     Menu  Centre de contrôle",21,0x99ffffff);
         FrameLayout.LayoutParams cp=frame(-2,30,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL,0,0);cp.bottomMargin=px(27);root.addView(controls,cp);
     }
     private void buildHeader() {
         TextView brand=text("GlassTV",28,0xbbffffff);
-        brand.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));root.addView(brand,frame(260,40,Gravity.TOP,112,63));
+        brand.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
         time=text("",30,0xddffffff);time.setGravity(Gravity.RIGHT);
         root.addView(time,frame(145,45,Gravity.TOP,1510,60));
         TextView button=text("◉",35,Color.WHITE);button.setGravity(Gravity.CENTER);button.setContentDescription("Centre de contrôle");
@@ -143,10 +156,10 @@ public class MainActivity extends Activity {
         button.setOnClickListener(v->showControls());
         button.setOnFocusChangeListener((v,focus)->{v.animate().scaleX(focus?1.12f:1).scaleY(focus?1.12f:1).setDuration(duration(180)).start();});
         headerButton=button;root.addView(button,frame(66,66,Gravity.TOP,1735,48));
-        heroTitle=text("Bienvenue chez vous.",64,Color.WHITE);heroTitle.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
+        heroTitle=text(greeting(),56,Color.WHITE);heroTitle.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
         root.addView(heroTitle,frame(1450,90,Gravity.TOP,112,175));
         heroSubtitle=text("Vos applications. Au premier plan.",27,0xaaffffff);
-        root.addView(heroSubtitle,frame(1450,50,Gravity.TOP,115,265));
+        heroSubtitle.setVisibility(View.GONE);
     }
     @Override protected void onResume() {
         super.onResume(); resumed=true; root.setAlpha(1f);root.setScaleX(1);root.setScaleY(1);
@@ -154,7 +167,7 @@ public class MainActivity extends Activity {
         refreshApps(); handler.removeCallbacks(clockTick);clockTick.run();
     }
     @Override protected void onPause() { super.onPause();resumed=false;handler.removeCallbacks(clockTick);handler.removeCallbacks(singleMenu);handler.removeCallbacks(holdMenu);lastMenuUp=0;root.animate().cancel(); }
-    @Override protected void onDestroy() { images.shutdownNow();handler.removeCallbacksAndMessages(null);super.onDestroy(); }
+    @Override protected void onDestroy() { if(pageAnimator!=null)pageAnimator.cancel();images.shutdownNow();handler.removeCallbacksAndMessages(null);super.onDestroy(); }
     private void refreshApps() {
         String selected=lastFocus instanceof Card?((Card)lastFocus).app.pkg:"";
         LinkedHashMap<String,App> found=new LinkedHashMap<>();
@@ -178,19 +191,25 @@ public class MainActivity extends Activity {
         dockCards.clear();gridCards.clear();
         ArrayList<App> favoritesList=new ArrayList<>();
         for(App app:apps)if(favorites.contains(app.pkg))favoritesList.add(app);
-        // First use only: seed five apps, then respect the user's explicit selection, including none.
-        if(!prefs.contains("favorites")) {
-            for(int i=0;i<Math.min(5,apps.size());i++)favoritesList.add(apps.get(i));
-            Set<String> initial=new HashSet<>();for(App app:favoritesList)initial.add(app.pkg);
-            prefs.edit().putStringSet("favorites",initial).apply();
-        }
+        // Five fixed slots, preserving the previous choices and filling unused slots.
+        favoritesList.clear();
+        String order=prefs.getString("favorite_slots","");
+        for(String pkg:order.split("\\|"))for(App app:apps)if(app.pkg.equals(pkg)&&!favoritesList.contains(app)&&favoritesList.size()<5)favoritesList.add(app);
+        for(App app:apps)if(favorites.contains(app.pkg)&&!favoritesList.contains(app)&&favoritesList.size()<5)favoritesList.add(app);
+        for(App app:apps)if(!favoritesList.contains(app)&&favoritesList.size()<5)favoritesList.add(app);
+        ArrayList<String> slotIds=new ArrayList<>();for(App app:favoritesList)slotIds.add(app.pkg);
+        prefs.edit().putString("favorite_slots",android.text.TextUtils.join("|",slotIds)).putStringSet("favorites",new HashSet<>(slotIds)).apply();
         HorizontalScrollView favoritesScroll=new HorizontalScrollView(this);
         favoritesScroll.setHorizontalScrollBarEnabled(false);favoritesScroll.setClipToPadding(false);
         LinearLayout dock=new LinearLayout(this);dock.setGravity(Gravity.CENTER_VERTICAL);dock.setPadding(px(30),px(25),px(30),px(15));
         dock.setClipChildren(false);dock.setClipToPadding(false);dock.setBackground(glass(0x38dcd7f5,0x173b345a,40,0x49ffffff));
-        favoritesScroll.addView(dock);
+        favoritesScroll.setFillViewport(true);favoritesScroll.addView(dock);
         content.addView(favoritesScroll,new LinearLayout.LayoutParams(-1,px(255)));
         for(int i=0;i<favoritesList.size();i++){addCard(dock,favoritesList.get(i),i,true);dockCards.add(cards.get(cards.size()-1));}
+        for(int i=favoritesList.size();i<5;i++){
+            TextView slot=text("+",44,0x88ffffff);slot.setGravity(Gravity.CENTER);slot.setBackground(glass(0x18ffffff,0x08ffffff,24,0x22ffffff));
+            LinearLayout.LayoutParams emptySlot=new LinearLayout.LayoutParams(px(292),px(165));emptySlot.rightMargin=px(32);dock.addView(slot,emptySlot);
+        }
         if(favoritesList.isEmpty()) {
             TextView empty=text("Vos favoris apparaîtront ici. ↓ Applications",28,Color.WHITE);
             empty.setFocusable(true);empty.setOnKeyListener((v,k,e)->{if(k==KeyEvent.KEYCODE_DPAD_DOWN&&e.getAction()==KeyEvent.ACTION_DOWN&&!gridCards.isEmpty()){gridCards.get(0).requestFocus();return true;}return false;});
@@ -216,7 +235,7 @@ public class MainActivity extends Activity {
         }
         rebuilding=false;
         Card restore=cards.get(0);if(appsPage)for(Card c:gridCards)if(c.app.pkg.equals(selected))restore=c;
-        final Card focus=restore;scroll.post(()->{if(panel==null)focus.requestFocus();});
+        final Card focus=restore;scroll.post(()->{if(panel==null)focus.requestFocusFromTouch();});
     }
     private void addCard(LinearLayout row,App app,int index,boolean dock) {
         Card c=new Card(app,index,dock);cards.add(c);
@@ -242,7 +261,7 @@ public class MainActivity extends Activity {
                 shine.animate().alpha(focused?1:.15f).setDuration(duration(220)).start();label.animate().alpha(focused?1:.58f).setDuration(duration(180)).start();
                 if(focused) {reveal(this);
                     if(dock)post(()->{Rect safe=new Rect();getDrawingRect(safe);safe.inset(-px(22),-px(20));requestRectangleOnScreen(safe,false);});
-                    lastFocus=this;heroTitle.setText("Votre cinéma, chez vous.");heroSubtitle.setText(a.label+"  ·  ↓ Applications");
+                    lastFocus=this;heroTitle.setText(greeting());
                     wallpaper.animate().translationX(px((index%5-2)*-7)).translationY(px(index<5?0:-12)).setDuration(duration(600)).setInterpolator(new DecelerateInterpolator()).start();
                 }
             });
@@ -263,10 +282,18 @@ public class MainActivity extends Activity {
         }).start();
     }
     private void toggleFavorite(App app) {
-        Set<String> favorites=new HashSet<>(prefs.getStringSet("favorites",Collections.emptySet()));
-        boolean removed=favorites.remove(app.pkg);if(!removed)favorites.add(app.pkg);
-        prefs.edit().putStringSet("favorites",favorites).apply();
-        Toast.makeText(this,removed?"Retirée des favoris":"Ajoutée aux favoris",Toast.LENGTH_SHORT).show();refreshApps();
+        String[] labels=new String[5];
+        for(int i=0;i<5;i++)labels[i]="Emplacement "+(i+1)+(i<dockCards.size()?" · "+dockCards.get(i).app.label:"");
+        new AlertDialog.Builder(this).setTitle("Placer "+app.label+" dans les favoris")
+            .setItems(labels,(dialog,slot)->{
+                ArrayList<String> ids=new ArrayList<>(Arrays.asList(prefs.getString("favorite_slots","").split("\\|")));
+                int previous=ids.indexOf(app.pkg);
+                if(previous>=0&&slot<ids.size())Collections.swap(ids,previous,slot);
+                else if(slot<ids.size())ids.set(slot,app.pkg);
+                else ids.add(app.pkg);
+                prefs.edit().putString("favorite_slots",android.text.TextUtils.join("|",ids)).putStringSet("favorites",new HashSet<>(ids)).apply();
+                refreshApps();
+            }).setNegativeButton("Annuler",null).show();
     }
     private void showControls() {
         if(panel!=null)return;
@@ -285,7 +312,7 @@ public class MainActivity extends Activity {
         control(sheet,"Choisir la bannière",this::chooseBackdrop);
         control(sheet,"Actualiser les applications",()->{closeControls();refreshApps();});
         TextView close=control(sheet,"Fermer",this::closeControls);first.setNextFocusUpId(first.getId());close.setNextFocusDownId(close.getId());
-        TextView version=text("GlassTV 0.3.0  •  Interface locale",19,0x88ffffff);version.setPadding(0,px(25),0,0);sheet.addView(version);
+        TextView version=text("GlassTV 0.4.0  •  Interface locale",19,0x88ffffff);version.setPadding(0,px(25),0,0);sheet.addView(version);
         sheet.setTranslationX(px(90));sheet.setAlpha(0);sheet.animate().translationX(0).alpha(1).setDuration(duration(280)).setInterpolator(new DecelerateInterpolator()).start();
         for(int i=0;i<panelButtons.size();i++){TextView v=panelButtons.get(i);v.setNextFocusUpId(panelButtons.get(Math.max(0,i-1)).getId());v.setNextFocusDownId(panelButtons.get(Math.min(panelButtons.size()-1,i+1)).getId());}
         first.requestFocus();
@@ -375,4 +402,5 @@ public class MainActivity extends Activity {
         }
     }
 }
+
 
