@@ -240,7 +240,9 @@ public class MainActivity extends Activity {
                 tile.animate().scaleX(focused?1.09f:1).scaleY(focused?1.09f:1).translationZ(px(focused?26:0)).setDuration(duration(260)).setInterpolator(new OvershootInterpolator(.8f)).start();
                 art.animate().scaleX(focused?1.035f:1).scaleY(focused?1.035f:1).setDuration(duration(330)).start();
                 shine.animate().alpha(focused?1:.15f).setDuration(duration(220)).start();label.animate().alpha(focused?1:.58f).setDuration(duration(180)).start();
-                if(focused) {reveal(this);lastFocus=this;heroTitle.setText("Votre cinéma, chez vous.");heroSubtitle.setText(a.label+"  ·  ↓ Applications");
+                if(focused) {reveal(this);
+                    if(dock)post(()->{Rect safe=new Rect();getDrawingRect(safe);safe.inset(-px(22),-px(20));requestRectangleOnScreen(safe,false);});
+                    lastFocus=this;heroTitle.setText("Votre cinéma, chez vous.");heroSubtitle.setText(a.label+"  ·  ↓ Applications");
                     wallpaper.animate().translationX(px((index%5-2)*-7)).translationY(px(index<5?0:-12)).setDuration(duration(600)).setInterpolator(new DecelerateInterpolator()).start();
                 }
             });

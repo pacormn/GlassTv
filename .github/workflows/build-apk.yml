@@ -86,6 +86,19 @@ jobs:
             adb shell input keyevent 82
             sleep 1
             adb exec-out screencap -p > screenshots/controls.png
+            adb shell input keyevent 20 20 20 20 20 20 20 20 20 20
+            sleep 1
+            adb exec-out screencap -p > screenshots/controls-bottom.png
+            adb shell uiautomator dump /sdcard/panel.xml
+            adb pull /sdcard/panel.xml screenshots/panel.xml
+            python3 -c 'import xml.etree.ElementTree as E; n=[x for x in E.parse("screenshots/panel.xml").iter("node") if x.get("focused")=="true"]; assert len(n)==1 and n[0].get("text")=="Fermer", n'
+            adb shell input keyevent 4
+            adb shell input keyevent 20
+            sleep 1
+            adb exec-out screencap -p > screenshots/applications.png
+            adb shell uiautomator dump /sdcard/grid.xml
+            adb pull /sdcard/grid.xml screenshots/grid.xml
+            python3 -c 'import re,xml.etree.ElementTree as E; n=[x for x in E.parse("screenshots/grid.xml").iter("node") if x.get("focused")=="true"]; assert len(n)==1,n; x,y,r,b=map(int,re.findall(r"\d+",n[0].get("bounds"))); assert x>=0 and y>=0 and r<=1920 and b<=1080,(x,y,r,b)'
             adb shell input keyevent 4
             adb shell dumpsys activity activities | grep -E 'mResumedActivity.*com.glasstv.launcher'
             adb logcat -d -b crash > screenshots/crash.txt
@@ -113,7 +126,7 @@ jobs:
         run: |
           if gh release view v0.3.0 >/dev/null 2>&1; then exit 0; fi
           cat > notes.md <<'NOTES'
-          Nouvelle interface inspirée de tvOS : dock translucide, bannières TV, animations de focus, parallaxe, centre de contrôle et favoris (appui long OK).
+          Accueil avec favoris seuls, grille des applications en descendant, bannière personnalisable et centre de contrôle avec focus isolé et défilement.
           Trois ambiances et option animations réduites.
           APK de test pour Android TV 11, compilé et testé sur émulateur API 30.
           Installer GlassTV-0.3.0-debug.apk. Si Android refuse la mise à jour à cause de la signature debug, désinstaller la version 0.1.0 puis installer celle-ci.
