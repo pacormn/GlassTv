@@ -25,6 +25,7 @@ public class MainActivity extends Activity {
     private final ArrayList<App> apps = new ArrayList<>();
     private final ArrayList<Card> cards = new ArrayList<>();
     private SharedPreferences prefs;
+    private Updates updates;
     private FrameLayout root, panel;
     private LinearLayout content;
     private ScrollView scroll;
@@ -127,6 +128,7 @@ public class MainActivity extends Activity {
     }
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        updates=new Updates(this);
         prefs=getSharedPreferences("appearance",MODE_PRIVATE);
         reduced=prefs.getBoolean("reduced",false); palette=prefs.getInt("palette",0);
         unit=getResources().getDisplayMetrics().widthPixels/1920f;
@@ -164,12 +166,12 @@ public class MainActivity extends Activity {
         heroSubtitle.setVisibility(View.GONE);
     }
     @Override protected void onResume() {
-        super.onResume(); resumed=true; root.setAlpha(1f);root.setScaleX(1);root.setScaleY(1);
+        super.onResume(); updates.resume();resumed=true; root.setAlpha(1f);root.setScaleX(1);root.setScaleY(1);
         if(panel!=null)closeControls();
         refreshApps(); handler.removeCallbacks(clockTick);clockTick.run();
     }
-    @Override protected void onPause() { super.onPause();resumed=false;handler.removeCallbacks(clockTick);handler.removeCallbacks(holdBack);handler.removeCallbacks(singleMenu);handler.removeCallbacks(holdMenu);lastMenuUp=0;root.animate().cancel(); }
-    @Override protected void onDestroy() { if(pageAnimator!=null)pageAnimator.cancel();images.shutdownNow();handler.removeCallbacksAndMessages(null);super.onDestroy(); }
+    @Override protected void onPause() { super.onPause();updates.pause();resumed=false;handler.removeCallbacks(clockTick);handler.removeCallbacks(holdBack);handler.removeCallbacks(singleMenu);handler.removeCallbacks(holdMenu);lastMenuUp=0;root.animate().cancel(); }
+    @Override protected void onDestroy() { if(pageAnimator!=null)pageAnimator.cancel();images.shutdownNow();updates.close();handler.removeCallbacksAndMessages(null);super.onDestroy(); }
     private void refreshApps() {
         String selected=lastFocus instanceof Card?((Card)lastFocus).app.pkg:"";
         LinkedHashMap<String,App> found=new LinkedHashMap<>();
@@ -311,10 +313,12 @@ public class MainActivity extends Activity {
         control(sheet,"Animations  ·  "+(reduced?"Réduites":"Fluides"),()->{reduced=!reduced;prefs.edit().putBoolean("reduced",reduced).apply();closeControls();});
         control(sheet,"Définir comme accueil",this::requestHome);
         control(sheet,"Télécommande",this::remoteSettings);
+        control(sheet,"Mises à jour auto · "+(updates.enabled()?"Activées":"Désactivées"),()->{updates.toggle();closeControls();});
+        control(sheet,"Rechercher une mise à jour",()->{closeControls();updates.check(true);});
         control(sheet,"Choisir la bannière",this::chooseBackdrop);
         control(sheet,"Actualiser les applications",()->{closeControls();refreshApps();});
         TextView close=control(sheet,"Fermer",this::closeControls);first.setNextFocusUpId(first.getId());close.setNextFocusDownId(close.getId());
-        TextView version=text("GlassTV 0.4.0  •  Interface locale",19,0x88ffffff);version.setPadding(0,px(25),0,0);sheet.addView(version);
+        TextView version=text("GlassTV 0.4.1  •  Interface locale",19,0x88ffffff);version.setPadding(0,px(25),0,0);sheet.addView(version);
         sheet.setTranslationX(px(90));sheet.setAlpha(0);sheet.animate().translationX(0).alpha(1).setDuration(duration(280)).setInterpolator(new DecelerateInterpolator()).start();
         for(int i=0;i<panelButtons.size();i++){TextView v=panelButtons.get(i);v.setNextFocusUpId(panelButtons.get(Math.max(0,i-1)).getId());v.setNextFocusDownId(panelButtons.get(Math.min(panelButtons.size()-1,i+1)).getId());}
         first.requestFocus();
