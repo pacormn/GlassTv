@@ -37,6 +37,9 @@ public class MainActivity extends Activity {
     private int palette;
     private boolean appsPage;
     private android.animation.ValueAnimator pageAnimator;
+    private int pageTarget=-1;
+    private Boolean animatedGrid;
+    private Runnable pendingReveal;
     private final ArrayList<Card> dockCards=new ArrayList<>();
     private final ArrayList<Card> gridCards=new ArrayList<>();
     private final ArrayList<TextView> panelButtons=new ArrayList<>();
@@ -47,15 +50,19 @@ public class MainActivity extends Activity {
     private int imageGeneration;
     private void reveal(Card card) {
         if(card==null)return;
-        appsPage=gridCards.contains(card);
-        scroll.post(()->{
-            android.graphics.Rect bounds=new android.graphics.Rect();
-            card.getDrawingRect(bounds);content.offsetDescendantRectToMyCoords(card,bounds);
-            int margin=px(32),y=scroll.getScrollY();
-            int target=appsPage?Math.max(0,bounds.top-margin):0;
-            if(bounds.bottom+margin>target+scroll.getHeight())target=bounds.bottom+margin-scroll.getHeight();
-            animatePage(Math.max(0,target),appsPage);
-        });
+        if(pendingReveal!=null)scroll.removeCallbacks(pendingReveal);
+        pendingReveal=()->{
+            if(!card.hasFocus()||panel!=null)return;
+            boolean grid=gridCards.contains(card),entering=grid&&!appsPage;
+            Rect bounds=new Rect();card.getDrawingRect(bounds);
+            content.offsetDescendantRectToMyCoords(card,bounds);
+            int margin=px(32),target=pageAnimator!=null&&pageAnimator.isRunning()?pageTarget:scroll.getScrollY();
+            if(!grid)target=0;
+            else if(entering||bounds.top-margin<target)target=Math.max(0,bounds.top-margin);
+            else if(bounds.bottom+margin>target+scroll.getHeight())target=bounds.bottom+margin-scroll.getHeight();
+            appsPage=grid;animatePage(Math.max(0,target),grid);
+        };
+        scroll.postOnAnimation(pendingReveal);
     }
     private void loadBackdrop(android.net.Uri uri) {
         final int generation=++imageGeneration;
@@ -101,14 +108,22 @@ public class MainActivity extends Activity {
     }
     private String greeting(){int hour=Calendar.getInstance().get(Calendar.HOUR_OF_DAY);return (hour>=6&&hour<18?"Bonjour":"Bonsoir")+" Paco";}
     private void animatePage(int target,boolean grid){
+        int max=Math.max(0,content.getHeight()-scroll.getHeight());
+        target=Math.max(0,Math.min(target,max));
+        if(animatedGrid==null||animatedGrid!=grid){
+            animatedGrid=grid;heroTitle.animate().cancel();
+            heroTitle.animate().alpha(grid?0:1).translationY(grid?-px(14):0).setDuration(duration(220)).start();
+            backdrop.animate().cancel();backdrop.animate().alpha(grid?.35f:.8f).setDuration(duration(300)).start();
+        }
+        if(pageAnimator!=null&&pageAnimator.isRunning()&&target==pageTarget)return;
         if(pageAnimator!=null)pageAnimator.cancel();
-        heroTitle.animate().cancel();heroTitle.animate().alpha(grid?0:1).translationY(grid?-px(18):0).setDuration(duration(280)).start();
-        backdrop.animate().alpha(grid?.35f:.8f).setDuration(duration(420)).start();
-        if(reduced){scroll.scrollTo(0,target);return;}
+        pageTarget=target;
+        if(reduced||Math.abs(scroll.getScrollY()-target)<2){scroll.scrollTo(0,target);return;}
         pageAnimator=android.animation.ValueAnimator.ofInt(scroll.getScrollY(),target);
-        pageAnimator.setDuration(460);
-        pageAnimator.setInterpolator(new android.view.animation.PathInterpolator(.22f,1f,.36f,1f));
-        pageAnimator.addUpdateListener(a->scroll.scrollTo(0,(Integer)a.getAnimatedValue()));pageAnimator.start();
+        pageAnimator.setDuration(320);
+        pageAnimator.setInterpolator(new android.view.animation.PathInterpolator(.25f,.1f,.25f,1f));
+        pageAnimator.addUpdateListener(animation->scroll.scrollTo(0,(Integer)animation.getAnimatedValue()));
+        pageAnimator.start();
     }
     private int px(float n) { return Math.round(n * unit); }
     private int duration(int ms) { return reduced ? 0 : ms; }
@@ -141,6 +156,8 @@ public class MainActivity extends Activity {
         buildHeader();
         scroll=new ScrollView(this){
             @Override public void requestChildFocus(View child,View focused){int y=getScrollY();super.requestChildFocus(child,focused);scrollTo(0,y);}
+            @Override public boolean executeKeyEvent(KeyEvent event){return false;}
+            @Override public boolean requestChildRectangleOnScreen(View child,Rect rectangle,boolean immediate){return false;}
         }; scroll.setClipChildren(false); scroll.setClipToPadding(false);
         scroll.setVerticalScrollBarEnabled(false); scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
         scroll.setFillViewport(false); scroll.setSmoothScrollingEnabled(true);
@@ -170,7 +187,7 @@ public class MainActivity extends Activity {
         if(panel!=null)closeControls();
         refreshApps(); handler.removeCallbacks(clockTick);clockTick.run();
     }
-    @Override protected void onPause() { super.onPause();updates.pause();resumed=false;handler.removeCallbacks(clockTick);handler.removeCallbacks(holdBack);handler.removeCallbacks(singleMenu);handler.removeCallbacks(holdMenu);lastMenuUp=0;root.animate().cancel(); }
+    @Override protected void onPause() { super.onPause();if(pageAnimator!=null)pageAnimator.cancel();updates.pause();resumed=false;handler.removeCallbacks(clockTick);handler.removeCallbacks(holdBack);handler.removeCallbacks(singleMenu);handler.removeCallbacks(holdMenu);lastMenuUp=0;root.animate().cancel(); }
     @Override protected void onDestroy() { if(pageAnimator!=null)pageAnimator.cancel();images.shutdownNow();updates.close();handler.removeCallbacksAndMessages(null);super.onDestroy(); }
     private void refreshApps() {
         String selected=lastFocus instanceof Card?((Card)lastFocus).app.pkg:"";
@@ -260,7 +277,7 @@ public class MainActivity extends Activity {
             setOnFocusChangeListener((v,focused)-> {
                 if(rebuilding)return;
                 tile.animate().cancel();art.animate().cancel();shine.animate().cancel();
-                tile.animate().scaleX(focused?1.09f:1).scaleY(focused?1.09f:1).translationZ(px(focused?26:0)).setDuration(duration(260)).setInterpolator(new OvershootInterpolator(.8f)).start();
+                tile.animate().scaleX(focused?1.09f:1).scaleY(focused?1.09f:1).translationZ(px(focused?26:0)).setDuration(duration(260)).setInterpolator(new DecelerateInterpolator()).start();
                 art.animate().scaleX(focused?1.035f:1).scaleY(focused?1.035f:1).setDuration(duration(330)).start();
                 shine.animate().alpha(focused?1:.15f).setDuration(duration(220)).start();label.animate().alpha(focused?1:.58f).setDuration(duration(180)).start();
                 if(focused) {reveal(this);
@@ -318,7 +335,7 @@ public class MainActivity extends Activity {
         control(sheet,"Choisir la bannière",this::chooseBackdrop);
         control(sheet,"Actualiser les applications",()->{closeControls();refreshApps();});
         TextView close=control(sheet,"Fermer",this::closeControls);first.setNextFocusUpId(first.getId());close.setNextFocusDownId(close.getId());
-        TextView version=text("GlassTV 0.4.1  •  Interface locale",19,0x88ffffff);version.setPadding(0,px(25),0,0);sheet.addView(version);
+        TextView version=text("GlassTV 0.4.2  •  Interface locale",19,0x88ffffff);version.setPadding(0,px(25),0,0);sheet.addView(version);
         sheet.setTranslationX(px(90));sheet.setAlpha(0);sheet.animate().translationX(0).alpha(1).setDuration(duration(280)).setInterpolator(new DecelerateInterpolator()).start();
         for(int i=0;i<panelButtons.size();i++){TextView v=panelButtons.get(i);v.setNextFocusUpId(panelButtons.get(Math.max(0,i-1)).getId());v.setNextFocusDownId(panelButtons.get(Math.min(panelButtons.size()-1,i+1)).getId());}
         first.requestFocus();
@@ -329,7 +346,7 @@ public class MainActivity extends Activity {
         panelButtons.add(v);v.setOnFocusChangeListener((view,focus)->{if(focus&&panelScroll!=null)v.post(()->{Rect r=new Rect();v.getDrawingRect(r);r.inset(-px(12),-px(14));v.requestRectangleOnScreen(r,false);});v.setTextColor(focus?0xff151520:Color.WHITE);v.setBackground(glass(focus?0xfff5f2ff:0x18ffffff,focus?0xffd8d9e6:0x0cffffff,20,0x55ffffff));v.animate().scaleX(focus?1.025f:1).scaleY(focus?1.025f:1).setDuration(duration(160)).start();});v.setOnClickListener(view->action.run());return v;
     }
     private void closeControls(){if(panel==null)return;root.removeView(panel);panel=null;scroll.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);headerButton.setFocusable(true);if(lastFocus!=null)lastFocus.requestFocus();}
-    @Override public void onBackPressed(){if(panel!=null)closeControls();else if(!cards.isEmpty()){appsPage=false;scroll.smoothScrollTo(0,0);cards.get(0).requestFocus();}}
+    @Override public void onBackPressed(){if(panel!=null)closeControls();else if(!cards.isEmpty()){appsPage=false;animatePage(0,false);cards.get(0).requestFocus();}}
     private void requestHome() {
         try {
             if(android.os.Build.VERSION.SDK_INT>=29) {
