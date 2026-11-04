@@ -29,7 +29,7 @@ public class MainActivity extends Activity {
     private AerialPlayer aerial;
     private TextView developerBadge;
     private static final String AERIAL_SOURCE="https://sylvan.apple.com/Aerials/2x/Videos/DB_D011_C009_2K_SDR_HEVC.mov";
-    private final Runnable idleSaver=()->{if(resumed&&panel==null&&hasWindowFocus()&&prefs.getBoolean("saver_auto",true))startSaver();};
+    private final Runnable idleSaver=()->{if(this.resumed&&this.panel==null&&hasWindowFocus()&&this.prefs.getBoolean("saver_auto",true))startSaver();};
     private void resetIdle(){handler.removeCallbacks(idleSaver);if(resumed&&aerial!=null&&!aerial.visible()&&prefs.getBoolean("saver_auto",true))handler.postDelayed(idleSaver,180000);}
     @Override public void onUserInteraction(){super.onUserInteraction();resetIdle();}
     private String appVersion(){try{return getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(Exception e){return "?";}}
