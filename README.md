@@ -2,12 +2,18 @@
 
 ## Installer sur la TV
 
-### [⬇ Télécharger GlassTV 0.4.1.apk](https://github.com/pacormn/GlassTv/releases/download/v0.4.1/GlassTV-0.4.1-debug.apk)
+### [⬇ Télécharger GlassTV 0.4.2.apk](https://github.com/pacormn/GlassTv/releases/download/v0.4.2/GlassTV-0.4.2-debug.apk)
 
 Ouvrir ce lien dans le navigateur de la TV ou Downloader puis installer l'APK.
-[Voir les fichiers de la Release](https://github.com/pacormn/GlassTv/releases/tag/v0.4.1).
+[Voir les fichiers de la Release](https://github.com/pacormn/GlassTv/releases/tag/v0.4.2).
 
 Les APK utilisent actuellement des signatures debug de runners distincts. Si Android refuse la mise à jour pour incompatibilité de signature, désinstaller l'ancienne version puis installer celle-ci (les réglages seront effacés). Une clé de signature durable reste nécessaire pour garantir les mises à jour sur place entre toutes les compilations.
+
+## Défilement 0.4.2
+
+Le défilement clavier natif est désactivé dans la grille pour éviter son conflit avec l'animation de transition. Les déplacements de focus ne relancent plus une animation vers la même destination ; la grille ne se déplace que lorsque la sélection sort de la zone visible. Les anciens déplacements en attente sont remplacés par le plus récent et le rebond des tuiles est supprimé.
+
+Compilation, lint et test de navigation Android 11 réussis. La fluidité sur la Xiaomi réelle reste à vérifier ; aucun objectif de fréquence d'images n'est garanti par le test d'émulateur.
 
 ## Accueil épuré
 
