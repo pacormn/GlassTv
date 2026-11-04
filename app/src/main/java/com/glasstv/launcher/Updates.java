@@ -72,11 +72,21 @@ final class Updates {
   }catch(RuntimeException e){return;}
   busy=true;
   worker.execute(()->{
-   try(InputStream in=new ParcelFileDescriptor.AutoCloseInputStream(dm.openDownloadedFile(id))){
-    MessageDigest digest=MessageDigest.getInstance("SHA-256");byte[] b=new byte[8192];int n;while((n=in.read(b))!=-1)digest.update(b,0,n);
+   try(InputStream in=new ParcelFileDescriptor.AutoCloseInputStream(dm.openDownloadedFile(id));FileOutputStream out=new FileOutputStream(new File(a.getCacheDir(),"candidate.apk"))){
+    MessageDigest digest=MessageDigest.getInstance("SHA-256");byte[] b=new byte[8192];int n;while((n=in.read(b))!=-1){digest.update(b,0,n);out.write(b,0,n);}out.flush();
     StringBuilder hex=new StringBuilder();for(byte v:digest.digest())hex.append(String.format(java.util.Locale.ROOT,"%02x",v&255));
     if(!hex.toString().equalsIgnoreCase(p.getString("sha","")))throw new IOException("Invalid checksum");
-    h.post(()->{if(!active||closed)return;prompted=true;new AlertDialog.Builder(a).setTitle("Mise à jour prête").setMessage("Confirmer l’installation avec Android ? Une différence de signature de test peut empêcher la mise à jour.").setPositiveButton("Installer",(d,w)->install(id)).setNegativeButton("Plus tard",null).show();});
+    android.content.pm.PackageManager pm=a.getPackageManager();
+    android.content.pm.PackageInfo candidate=pm.getPackageArchiveInfo(new File(a.getCacheDir(),"candidate.apk").getPath(),android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES);
+    if(candidate==null||!a.getPackageName().equals(candidate.packageName)||candidate.getLongVersionCode()<=pm.getPackageInfo(a.getPackageName(),0).getLongVersionCode())throw new IOException("Invalid APK package/version");
+    boolean compatible=candidate.signingInfo!=null;
+    if(compatible)for(android.content.pm.Signature signer:candidate.signingInfo.getApkContentsSigners())if(!pm.hasSigningCertificate(a.getPackageName(),signer.toByteArray(),android.content.pm.PackageManager.CERT_INPUT_RAW_X509))compatible=false;
+    if(!compatible){
+        h.post(()->{if(!active||closed)return;prompted=true;new AlertDialog.Builder(a).setTitle("Changement de signature")
+            .setMessage("Cette version ne peut pas remplacer l’ancienne : leurs signatures diffèrent. Téléchargez le nouvel APK depuis la Release GitHub, désinstallez l’ancienne version (ses réglages seront perdus), puis installez le nouvel APK. Une clé permanente est nécessaire pour les mises à jour suivantes.")
+            .setPositiveButton("Compris",null).show();});return;
+    }
+    h.post(()->{if(!active||closed)return;prompted=true;new AlertDialog.Builder(a).setTitle("Mise à jour prête").setMessage("Le fichier et sa signature sont compatibles. Confirmer l’installation avec Android ?").setPositiveButton("Installer",(d,w)->install(id)).setNegativeButton("Plus tard",null).show();});
    }catch(Exception e){dm.remove(id);p.edit().remove("download").apply();h.post(()->message("Fichier invalide : téléchargement supprimé."));}
    finally{busy=false;}
   });

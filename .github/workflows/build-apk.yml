@@ -14,6 +14,8 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    outputs:
+      stable: ${{ steps.signing.outputs.stable }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -29,12 +31,33 @@ jobs:
           gradle-version: '8.10.2'
       - name: Install Android SDK
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Configure permanent signing
+        id: signing
+        env:
+          SIGNING_JSON: ${{ secrets.GLASSTV_SIGNING_JSON }}
+        run: |
+          python3 - <<'PY'
+          import os,json,base64,pathlib
+          raw=os.environ.get("SIGNING_JSON","")
+          if not raw:
+              with open(os.environ["GITHUB_OUTPUT"],"a") as f: f.write("stable=false\n")
+              print("Signing secret missing: CI checks run, release publication is disabled.")
+          else:
+              cfg=json.loads(raw)
+              print("::add-mask::"+cfg["password"])
+              key=pathlib.Path(os.environ["RUNNER_TEMP"])/"glasstv-signing.p12"
+              key.write_bytes(base64.b64decode(cfg["keystore"],validate=True));key.chmod(0o600)
+              if any("\n" in cfg[k] or "\r" in cfg[k] for k in ["password","alias"]): raise ValueError("Invalid signing configuration")
+              with open(os.environ["GITHUB_ENV"],"a") as f:
+                  f.write("GLASSTV_KEYSTORE="+str(key)+"\nGLASSTV_STORE_PASSWORD="+cfg["password"]+"\nGLASSTV_KEY_ALIAS="+cfg["alias"]+"\n")
+              with open(os.environ["GITHUB_OUTPUT"],"a") as f: f.write("stable=true\n")
+          PY
       - name: Compile APK and run Android lint
         run: gradle :app:assembleDebug :app:lintDebug --no-daemon --stacktrace
       - name: Verify APK signature and Android compatibility
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.5.0-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.5.1.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose dist/*.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/*.apk | tee dist/apk-info.txt
           grep -q "sdkVersion:'28'" dist/apk-info.txt
@@ -75,7 +98,7 @@ jobs:
           script: |
             adb shell wm size 1920x1080
             adb shell wm density 320
-            adb install dist/GlassTV-0.5.0-debug.apk
+            adb install dist/GlassTV-0.5.1.apk
             adb shell am start -W -n com.glasstv.launcher/.MainActivity
             sleep 3
             mkdir -p screenshots
@@ -123,7 +146,7 @@ jobs:
           path: screenshots/
   release:
     needs: [build, smoke]
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.build.outputs.stable == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -137,14 +160,14 @@ jobs:
           path: dist
       - name: Publish installable preview APK
         run: |
-          if gh release view v0.5.0 >/dev/null 2>&1; then exit 0; fi
+          if gh release view v0.5.1 >/dev/null 2>&1; then exit 0; fi
           cat > notes.md <<'NOTES'
           Mode développeur : version en bas à droite et bouton de test de l’économiseur. Lecteur aérien silencieux après 3 minutes dans GlassTV, source distante ou vidéo locale. Bannières TMDB non connectées : clé utilisateur encore nécessaire.
           Trois ambiances et option animations réduites.
           APK de test pour Android TV 11, compilé et testé sur émulateur API 30.
-          Installer GlassTV-0.5.0-debug.apk. Si Android refuse la mise à jour à cause de la signature debug, désinstaller la version 0.1.0 puis installer celle-ci.
-          Aucun service Apple intégré et aucune mise à jour automatique.
+          Installer GlassTV-0.5.1.apk. Migration vers la signature permanente : désinstaller une dernière fois les anciennes versions debug, puis installer celle-ci. Les réglages sont perdus à la désinstallation. Conserver la même clé GitHub pour les prochaines versions.
+          Mises à jour avec téléchargement automatique et confirmation Android. Signature permanente fournie par le secret GitHub GLASSTV_SIGNING_JSON.
           NOTES
-          gh release create v0.5.0 dist/GlassTV-0.5.0-debug.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.5.0 — Nouvelle interface TV" --notes-file notes.md --prerelease
+          gh release create v0.5.1 dist/GlassTV-0.5.1.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.5.1 — Nouvelle interface TV" --notes-file notes.md --prerelease
 
 
