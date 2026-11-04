@@ -26,6 +26,16 @@ public class MainActivity extends Activity {
     private final ArrayList<Card> cards = new ArrayList<>();
     private SharedPreferences prefs;
     private Updates updates;
+    private AerialPlayer aerial;
+    private TextView developerBadge;
+    private static final String AERIAL_SOURCE="https://sylvan.apple.com/Aerials/2x/Videos/DB_D011_C009_2K_SDR_HEVC.mov";
+    private final Runnable idleSaver=()->{if(resumed&&panel==null&&hasWindowFocus()&&prefs.getBoolean("saver_auto",true))startSaver();};
+    private void resetIdle(){handler.removeCallbacks(idleSaver);if(resumed&&aerial!=null&&!aerial.visible()&&prefs.getBoolean("saver_auto",true))handler.postDelayed(idleSaver,180000);}
+    @Override public void onUserInteraction(){super.onUserInteraction();resetIdle();}
+    private String appVersion(){try{return getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(Exception e){return "?";}}
+    private void startSaver(){closeControls();handler.removeCallbacks(idleSaver);if(pageAnimator!=null)pageAnimator.cancel();aerial.start(prefs.getString("saver_video",AERIAL_SOURCE));developerBadge.bringToFront();}
+    private void chooseSaverVideo(){try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("video/*").addCategory(Intent.CATEGORY_OPENABLE).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION),43);}catch(android.content.ActivityNotFoundException e){Toast.makeText(this,"Aucun sélecteur de vidéos installé",Toast.LENGTH_LONG).show();}}
+
     private FrameLayout root, panel;
     private LinearLayout content;
     private ScrollView scroll;
@@ -83,6 +93,7 @@ public class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int request,int result,Intent data) {
         super.onActivityResult(request,result,data);
+        if(request==43&&result==RESULT_OK&&data!=null&&data.getData()!=null){android.net.Uri uri=data.getData();try{getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(SecurityException ignored){}prefs.edit().putString("saver_video",uri.toString()).apply();return;}
         if(request==42&&result==RESULT_OK&&data!=null&&data.getData()!=null) {
             android.net.Uri uri=data.getData();
             try{getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(SecurityException ignored){}
@@ -148,7 +159,7 @@ public class MainActivity extends Activity {
         reduced=prefs.getBoolean("reduced",false); palette=prefs.getInt("palette",0);
         unit=getResources().getDisplayMetrics().widthPixels/1920f;
         getWindow().getDecorView().setSystemUiVisibility(5894 | View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
-        root=new FrameLayout(this); setContentView(root);
+        root=new FrameLayout(this); setContentView(root);aerial=new AerialPlayer(this,root);
         wallpaper=new Wallpaper(); wallpaper.setScaleX(1.06f);wallpaper.setScaleY(1.06f);root.addView(wallpaper,new FrameLayout.LayoutParams(-1,-1));
         backdrop=new ImageView(this);backdrop.setScaleType(ImageView.ScaleType.CENTER_CROP);root.addView(backdrop,new FrameLayout.LayoutParams(-1,-1));
         View veil=new View(this);veil.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{0x33000000,0x11000000,0xee060914}));root.addView(veil,new FrameLayout.LayoutParams(-1,-1));
@@ -166,6 +177,9 @@ public class MainActivity extends Activity {
         scroll.addView(content); FrameLayout.LayoutParams sp=frame(-1,-1,Gravity.TOP,0,145);sp.bottomMargin=px(70);root.addView(scroll,sp);
         controls=text("OK  Ouvrir     •     Maintenir OK  Organiser     •     Maintenir Retour  Réglages",21,0x99ffffff);
         FrameLayout.LayoutParams cp=frame(-2,30,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL,0,0);cp.bottomMargin=px(27);root.addView(controls,cp);
+        developerBadge=text("v"+appVersion(),18,0xbfffffff);developerBadge.setPadding(px(12),px(6),px(12),px(6));
+        developerBadge.setBackground(glass(0x66000000,0x44000000,10,0x11ffffff));developerBadge.setVisibility(prefs.getBoolean("developer",false)?View.VISIBLE:View.GONE);
+        FrameLayout.LayoutParams badge=frame(-2,-2,Gravity.BOTTOM|Gravity.RIGHT,0,0);badge.rightMargin=px(32);badge.bottomMargin=px(22);root.addView(developerBadge,badge);
     }
     private void buildHeader() {
         TextView brand=text("GlassTV",28,0xbbffffff);
@@ -185,9 +199,9 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume(); updates.resume();resumed=true; root.setAlpha(1f);root.setScaleX(1);root.setScaleY(1);
         if(panel!=null)closeControls();
-        refreshApps(); handler.removeCallbacks(clockTick);clockTick.run();
+        refreshApps(); handler.removeCallbacks(clockTick);clockTick.run();resetIdle();
     }
-    @Override protected void onPause() { super.onPause();if(pageAnimator!=null)pageAnimator.cancel();updates.pause();resumed=false;handler.removeCallbacks(clockTick);handler.removeCallbacks(holdBack);handler.removeCallbacks(singleMenu);handler.removeCallbacks(holdMenu);lastMenuUp=0;root.animate().cancel(); }
+    @Override protected void onPause() { super.onPause();aerial.stop();handler.removeCallbacks(idleSaver);if(pageAnimator!=null)pageAnimator.cancel();updates.pause();resumed=false;handler.removeCallbacks(clockTick);handler.removeCallbacks(holdBack);handler.removeCallbacks(singleMenu);handler.removeCallbacks(holdMenu);lastMenuUp=0;root.animate().cancel(); }
     @Override protected void onDestroy() { if(pageAnimator!=null)pageAnimator.cancel();images.shutdownNow();updates.close();handler.removeCallbacksAndMessages(null);super.onDestroy(); }
     private void refreshApps() {
         String selected=lastFocus instanceof Card?((Card)lastFocus).app.pkg:"";
@@ -332,10 +346,16 @@ public class MainActivity extends Activity {
         control(sheet,"Télécommande",this::remoteSettings);
         control(sheet,"Mises à jour auto · "+(updates.enabled()?"Activées":"Désactivées"),()->{updates.toggle();closeControls();});
         control(sheet,"Rechercher une mise à jour",()->{closeControls();updates.check(true);});
+        control(sheet,"Mode développeur · "+(prefs.getBoolean("developer",false)?"Activé":"Désactivé"),()->{boolean enabled=!prefs.getBoolean("developer",false);prefs.edit().putBoolean("developer",enabled).apply();developerBadge.setVisibility(enabled?View.VISIBLE:View.GONE);closeControls();});
+        if(prefs.getBoolean("developer",false))control(sheet,"Tester l’économiseur",this::startSaver);
+        control(sheet,"Économiseur auto · "+(prefs.getBoolean("saver_auto",true)?"3 minutes":"Désactivé"),()->{prefs.edit().putBoolean("saver_auto",!prefs.getBoolean("saver_auto",true)).apply();closeControls();resetIdle();});
+        control(sheet,"Choisir une vidéo locale",this::chooseSaverVideo);
+        control(sheet,"Source aérienne par défaut",()->{prefs.edit().remove("saver_video").apply();closeControls();});
+        control(sheet,"Bannières cinéma · Configuration",()->new AlertDialog.Builder(this).setTitle("Sorties cinéma").setMessage("Le diaporama automatique nécessite une clé API TMDB. Créez un compte sur themoviedb.org puis Paramètres → API. Aucune clé ni connexion TMDB n’est intégrée dans cette version. Vous pouvez déjà choisir une bannière locale.").setPositiveButton("Compris",null).show());
         control(sheet,"Choisir la bannière",this::chooseBackdrop);
         control(sheet,"Actualiser les applications",()->{closeControls();refreshApps();});
         TextView close=control(sheet,"Fermer",this::closeControls);first.setNextFocusUpId(first.getId());close.setNextFocusDownId(close.getId());
-        TextView version=text("GlassTV 0.4.2  •  Interface locale",19,0x88ffffff);version.setPadding(0,px(25),0,0);sheet.addView(version);
+        TextView version=text("GlassTV 0.5.0  •  Interface locale",19,0x88ffffff);version.setPadding(0,px(25),0,0);sheet.addView(version);
         sheet.setTranslationX(px(90));sheet.setAlpha(0);sheet.animate().translationX(0).alpha(1).setDuration(duration(280)).setInterpolator(new DecelerateInterpolator()).start();
         for(int i=0;i<panelButtons.size();i++){TextView v=panelButtons.get(i);v.setNextFocusUpId(panelButtons.get(Math.max(0,i-1)).getId());v.setNextFocusDownId(panelButtons.get(Math.min(panelButtons.size()-1,i+1)).getId());}
         first.requestFocus();
@@ -391,6 +411,7 @@ public class MainActivity extends Activity {
         }
     }
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        if(aerial.key(event)){resetIdle();return true;}
         int key=event.getKeyCode();
         if(key==KeyEvent.KEYCODE_BACK) {
             if(event.getAction()==KeyEvent.ACTION_DOWN&&event.getRepeatCount()==0){backHeld=false;handler.postDelayed(holdBack,650);}
