@@ -340,9 +340,9 @@ public class MainActivity extends Activity {
         View focused=getCurrentFocus();if(focused!=null)lastFocus=focused;
         scroll.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);headerButton.setFocusable(false);panelButtons.clear();
         panel=new FrameLayout(this);panel.setBackgroundColor(0x66040815);root.addView(panel,new FrameLayout.LayoutParams(-1,-1));
-        LinearLayout sheet=new LinearLayout(this);sheet.setOrientation(LinearLayout.VERTICAL);sheet.setPadding(px(40),px(36),px(40),px(30));sheet.setBackground(glass(0xe3596579,0xf0182235,42,0x88ffffff));
+        LinearLayout sheet=new LinearLayout(this);sheet.setOrientation(LinearLayout.VERTICAL);sheet.setPadding(px(40),px(36),px(40),px(30));sheet.setClipChildren(false);sheet.setClipToPadding(false);
         FrameLayout.LayoutParams p=frame(560,-2,Gravity.RIGHT|Gravity.TOP,0,65);p.rightMargin=px(70);p.height=getResources().getDisplayMetrics().heightPixels-px(130);
-        panelScroll=new ScrollView(this);panelScroll.setPadding(px(16),px(16),px(16),px(16));panelScroll.setClipToPadding(false);panelScroll.setVerticalScrollBarEnabled(false);panelScroll.addView(sheet);panel.addView(panelScroll,p);
+        panelScroll=new ScrollView(this);panelScroll.setBackground(glass(0xe3596579,0xf0182235,42,0x88ffffff));panelScroll.setClipToOutline(true);panelScroll.setPadding(px(16),px(16),px(16),px(16));panelScroll.setClipToPadding(false);panelScroll.setVerticalScrollBarEnabled(false);panelScroll.addView(sheet);panel.addView(panelScroll,p);
         TextView heading=text("Centre de contrôle",36,Color.WHITE);sheet.addView(heading,new LinearLayout.LayoutParams(-1,px(75)));
         TextView first=control(sheet,"Réglages Android TV",()->{try{startActivity(new Intent(Settings.ACTION_SETTINGS));}catch(android.content.ActivityNotFoundException e){Toast.makeText(this,"Réglages indisponibles",Toast.LENGTH_SHORT).show();}});
         control(sheet,"Ambiance  ·  "+new String[]{"Crépuscule","Océan","Minuit"}[palette],()->new AlertDialog.Builder(this).setTitle("Ambiance").setSingleChoiceItems(new String[]{"Crépuscule","Océan","Minuit"},palette,(d,which)->{palette=which;prefs.edit().putInt("palette",which).apply();wallpaper.reset();d.dismiss();closeControls();}).show());
