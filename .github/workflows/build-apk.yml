@@ -117,10 +117,7 @@ jobs:
             sleep 1
             adb shell input keyevent 20 20 20 20 20 20 20 20
             adb shell input keyevent 23
-            for attempt in $(seq 1 60); do
-              if adb logcat -d -s GLASSTV_AERIAL:I | grep -q FIRST_FRAME; then break; fi
-              sleep 2
-            done
+            for attempt in $(seq 1 60); do if adb logcat -d -s GLASSTV_AERIAL:I | grep -q FIRST_FRAME; then break; fi; sleep 2; done
             adb logcat -d -s GLASSTV_AERIAL:I > screenshots/aerial-playback.txt
             grep -q FIRST_FRAME screenshots/aerial-playback.txt
             adb exec-out screencap -p > screenshots/aerial-preview.png
