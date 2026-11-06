@@ -20,6 +20,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 /** Native TV home: real application banners, remote focus and lightweight glass layers. */
+@androidx.media3.common.util.UnstableApi
 public class MainActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ArrayList<App> apps = new ArrayList<>();
@@ -39,6 +40,7 @@ public class MainActivity extends Activity {
     private FrameLayout root, panel;
     private LinearLayout content;
     private ScrollView scroll;
+    private View favoritesBar;
     private Wallpaper wallpaper;
     private TextView time, heroTitle, heroSubtitle, controls;
     private View lastFocus;
@@ -66,9 +68,9 @@ public class MainActivity extends Activity {
             boolean grid=gridCards.contains(card),entering=grid&&!appsPage;
             Rect bounds=new Rect();card.getDrawingRect(bounds);
             content.offsetDescendantRectToMyCoords(card,bounds);
-            int margin=px(32),target=pageAnimator!=null&&pageAnimator.isRunning()?pageTarget:scroll.getScrollY();
+            int margin=px(32),dockSpace=px(300),target=pageAnimator!=null&&pageAnimator.isRunning()?pageTarget:scroll.getScrollY();
             if(!grid)target=0;
-            else if(entering||bounds.top-margin<target)target=Math.max(0,bounds.top-margin);
+            else if(entering||bounds.top-dockSpace<target)target=Math.max(0,bounds.top-dockSpace);
             else if(bounds.bottom+margin>target+scroll.getHeight())target=bounds.bottom+margin-scroll.getHeight();
             appsPage=grid;animatePage(Math.max(0,target),grid);
         };
@@ -166,6 +168,7 @@ public class MainActivity extends Activity {
         String saved=prefs.getString("backdrop","");if(!saved.isEmpty())loadBackdrop(android.net.Uri.parse(saved));
         buildHeader();
         scroll=new ScrollView(this){
+            @Override protected void onScrollChanged(int x,int y,int oldX,int oldY){super.onScrollChanged(x,y,oldX,oldY);if(favoritesBar!=null)favoritesBar.setTranslationY(Math.max(0,y-favoritesBar.getTop()+px(20)));}
             @Override public void requestChildFocus(View child,View focused){int y=getScrollY();super.requestChildFocus(child,focused);scrollTo(0,y);}
             @Override public boolean executeKeyEvent(KeyEvent event){return false;}
             @Override public boolean requestChildRectangleOnScreen(View child,Rect rectangle,boolean immediate){return false;}
@@ -186,13 +189,14 @@ public class MainActivity extends Activity {
         brand.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
         time=text("",30,0xddffffff);time.setGravity(Gravity.RIGHT);
         root.addView(time,frame(145,45,Gravity.TOP,1510,60));
-        TextView button=text("◉",35,Color.WHITE);button.setGravity(Gravity.CENTER);button.setContentDescription("Centre de contrôle");
-        button.setBackground(glass(0x25ffffff,0x0fffffff,32,0x33ffffff));button.setFocusable(true);button.setId(View.generateViewId());
+        TextView button=text("☷",42,Color.WHITE);button.setGravity(Gravity.CENTER);button.setContentDescription("Centre de contrôle");
+        button.setBackground(glass(0x45ffffff,0x15ffffff,33,0x66ffffff));button.setFocusable(true);button.setId(View.generateViewId());
         button.setOnClickListener(v->showControls());
-        button.setOnFocusChangeListener((v,focus)->{v.animate().scaleX(focus?1.12f:1).scaleY(focus?1.12f:1).setDuration(duration(180)).start();});
-        headerButton=button;root.addView(button,frame(66,66,Gravity.TOP,1735,48));
+        button.setOnFocusChangeListener((v,focus)->{button.setTextColor(focus?0xff111724:Color.WHITE);button.setBackground(glass(focus?0xfff7faff:0x45ffffff,focus?0xffcbd8e9:0x15ffffff,33,0x99ffffff));v.animate().scaleX(focus?1.08f:1).scaleY(focus?1.08f:1).translationZ(px(focus?16:0)).setDuration(duration(190)).start();});
+        button.setOnHoverListener((v,event)->{if(event.getAction()==android.view.MotionEvent.ACTION_HOVER_ENTER)v.requestFocus();return false;});
+        headerButton=button;root.addView(button,frame(100,66,Gravity.TOP,1701,48));
         heroTitle=text(greeting(),56,Color.WHITE);heroTitle.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
-        root.addView(heroTitle,frame(1450,90,Gravity.TOP,112,175));
+        root.addView(heroTitle,frame(1450,90,Gravity.TOP,112,83));
         heroSubtitle=text("Vos applications. Au premier plan.",27,0xaaffffff);
         heroSubtitle.setVisibility(View.GONE);
     }
@@ -238,7 +242,7 @@ public class MainActivity extends Activity {
         favoritesScroll.setHorizontalScrollBarEnabled(false);favoritesScroll.setClipToPadding(false);
         LinearLayout dock=new LinearLayout(this);dock.setGravity(Gravity.CENTER_VERTICAL);dock.setPadding(px(30),px(25),px(30),px(15));
         dock.setClipChildren(false);dock.setClipToPadding(false);dock.setBackground(glass(0x38dcd7f5,0x173b345a,40,0x49ffffff));
-        favoritesScroll.setFillViewport(true);favoritesScroll.addView(dock);
+        favoritesScroll.setFillViewport(true);favoritesScroll.addView(dock);favoritesBar=favoritesScroll;favoritesBar.setElevation(px(18));
         content.addView(favoritesScroll,new LinearLayout.LayoutParams(-1,px(255)));
         for(int i=0;i<favoritesList.size();i++){addCard(dock,favoritesList.get(i),i,true);dockCards.add(cards.get(cards.size()-1));}
         for(int i=favoritesList.size();i<5;i++){
@@ -334,8 +338,8 @@ public class MainActivity extends Activity {
         if(panel!=null)return;
         View focused=getCurrentFocus();if(focused!=null)lastFocus=focused;
         scroll.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);headerButton.setFocusable(false);panelButtons.clear();
-        panel=new FrameLayout(this);panel.setBackgroundColor(0x88040815);root.addView(panel,new FrameLayout.LayoutParams(-1,-1));
-        LinearLayout sheet=new LinearLayout(this);sheet.setOrientation(LinearLayout.VERTICAL);sheet.setPadding(px(40),px(36),px(40),px(30));sheet.setBackground(glass(0xee393749,0xee171925,38,0x55ffffff));
+        panel=new FrameLayout(this);panel.setBackgroundColor(0x66040815);root.addView(panel,new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout sheet=new LinearLayout(this);sheet.setOrientation(LinearLayout.VERTICAL);sheet.setPadding(px(40),px(36),px(40),px(30));sheet.setBackground(glass(0xe3596579,0xf0182235,42,0x88ffffff));
         FrameLayout.LayoutParams p=frame(560,-2,Gravity.RIGHT|Gravity.TOP,0,65);p.rightMargin=px(70);p.height=getResources().getDisplayMetrics().heightPixels-px(130);
         panelScroll=new ScrollView(this);panelScroll.setPadding(px(16),px(16),px(16),px(16));panelScroll.setClipToPadding(false);panelScroll.setVerticalScrollBarEnabled(false);panelScroll.addView(sheet);panel.addView(panelScroll,p);
         TextView heading=text("Centre de contrôle",36,Color.WHITE);sheet.addView(heading,new LinearLayout.LayoutParams(-1,px(75)));
@@ -362,8 +366,8 @@ public class MainActivity extends Activity {
     }
     private TextView control(LinearLayout parent,String title,Runnable action) {
         TextView v=text(title,27,Color.WHITE);v.setId(View.generateViewId());v.setNextFocusLeftId(v.getId());v.setNextFocusRightId(v.getId());v.setGravity(Gravity.CENTER_VERTICAL);v.setPadding(px(24),0,px(18),0);v.setFocusable(true);v.setClickable(true);
-        v.setBackground(glass(0x18ffffff,0x0cffffff,20,0x15ffffff));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,px(78));p.bottomMargin=px(13);parent.addView(v,p);
-        panelButtons.add(v);v.setOnFocusChangeListener((view,focus)->{if(focus&&panelScroll!=null)v.post(()->{Rect r=new Rect();v.getDrawingRect(r);r.inset(-px(12),-px(14));v.requestRectangleOnScreen(r,false);});v.setTextColor(focus?0xff151520:Color.WHITE);v.setBackground(glass(focus?0xfff5f2ff:0x18ffffff,focus?0xffd8d9e6:0x0cffffff,20,0x55ffffff));v.animate().scaleX(focus?1.025f:1).scaleY(focus?1.025f:1).setDuration(duration(160)).start();});v.setOnClickListener(view->action.run());return v;
+        v.setBackground(glass(0x30ffffff,0x12ffffff,23,0x3affffff));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,px(78));p.bottomMargin=px(13);parent.addView(v,p);
+        panelButtons.add(v);v.setOnFocusChangeListener((view,focus)->{if(focus&&panelScroll!=null)v.post(()->{Rect r=new Rect();v.getDrawingRect(r);r.inset(-px(12),-px(14));v.requestRectangleOnScreen(r,false);});v.setTextColor(focus?0xff151520:Color.WHITE);v.setBackground(glass(focus?0xfff6faff:0x30ffffff,focus?0xffd5e3f1:0x12ffffff,23,0x77ffffff));v.animate().scaleX(focus?1.025f:1).scaleY(focus?1.025f:1).setDuration(duration(160)).start();});v.setOnClickListener(view->action.run());return v;
     }
     private void closeControls(){if(panel==null)return;root.removeView(panel);panel=null;scroll.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);headerButton.setFocusable(true);if(lastFocus!=null)lastFocus.requestFocus();}
     @Override public void onBackPressed(){if(panel!=null)closeControls();else if(!cards.isEmpty()){appsPage=false;animatePage(0,false);cards.get(0).requestFocus();}}

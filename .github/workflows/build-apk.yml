@@ -57,7 +57,7 @@ jobs:
       - name: Verify APK signature and Android compatibility
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.5.1.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.5.2.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose dist/*.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/*.apk | tee dist/apk-info.txt
           grep -q "sdkVersion:'28'" dist/apk-info.txt
@@ -98,7 +98,7 @@ jobs:
           script: |
             adb shell wm size 1920x1080
             adb shell wm density 320
-            adb install dist/GlassTV-0.5.1.apk
+            adb install dist/GlassTV-0.5.2.apk
             adb shell am start -W -n com.glasstv.launcher/.MainActivity
             sleep 3
             mkdir -p screenshots
@@ -117,7 +117,12 @@ jobs:
             sleep 1
             adb shell input keyevent 20 20 20 20 20 20 20 20
             adb shell input keyevent 23
-            sleep 2
+            for attempt in $(seq 1 60); do
+              if adb logcat -d -s GLASSTV_AERIAL:I | grep -q FIRST_FRAME; then break; fi
+              sleep 2
+            done
+            adb logcat -d -s GLASSTV_AERIAL:I > screenshots/aerial-playback.txt
+            grep -q FIRST_FRAME screenshots/aerial-playback.txt
             adb exec-out screencap -p > screenshots/aerial-preview.png
             adb shell input keyevent 4
             adb shell input keyevent 82
@@ -160,14 +165,14 @@ jobs:
           path: dist
       - name: Publish installable preview APK
         run: |
-          if gh release view v0.5.1 >/dev/null 2>&1; then exit 0; fi
+          if gh release view v0.5.2 >/dev/null 2>&1; then exit 0; fi
           cat > notes.md <<'NOTES'
           Mode développeur : version en bas à droite et bouton de test de l’économiseur. Lecteur aérien silencieux après 3 minutes dans GlassTV, source distante ou vidéo locale. Bannières TMDB non connectées : clé utilisateur encore nécessaire.
           Trois ambiances et option animations réduites.
           APK de test pour Android TV 11, compilé et testé sur émulateur API 30.
-          Installer GlassTV-0.5.1.apk. Migration vers la signature permanente : désinstaller une dernière fois les anciennes versions debug, puis installer celle-ci. Les réglages sont perdus à la désinstallation. Conserver la même clé GitHub pour les prochaines versions.
+          Installer GlassTV-0.5.2.apk. Migration vers la signature permanente : désinstaller une dernière fois les anciennes versions debug, puis installer celle-ci. Les réglages sont perdus à la désinstallation. Conserver la même clé GitHub pour les prochaines versions.
           Mises à jour avec téléchargement automatique et confirmation Android. Signature permanente fournie par le secret GitHub GLASSTV_SIGNING_JSON.
           NOTES
-          gh release create v0.5.1 dist/GlassTV-0.5.1.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.5.1 — Nouvelle interface TV" --notes-file notes.md --prerelease
+          gh release create v0.5.2 dist/GlassTV-0.5.2.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.5.2 — Nouvelle interface TV" --notes-file notes.md --prerelease
 
 

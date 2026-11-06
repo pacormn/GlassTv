@@ -1,17 +1,40 @@
 package com.glasstv.launcher;
-import android.app.Activity;import android.graphics.Color;import android.net.Uri;import android.view.*;import android.widget.*;
+import android.app.Activity;import android.content.Context;import android.graphics.Color;import android.net.Uri;import android.os.Handler;import android.os.Looper;import android.util.Log;import android.view.*;import android.widget.*;
+import androidx.media3.common.*;import androidx.media3.exoplayer.*;import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;import androidx.media3.datasource.*;import androidx.media3.datasource.cache.*;import androidx.media3.database.StandaloneDatabaseProvider;import androidx.media3.ui.*;import java.io.File;import java.util.*;
+@androidx.media3.common.util.UnstableApi
 final class AerialPlayer {
- private final Activity activity;private final FrameLayout host;private FrameLayout overlay;private VideoView video;private View previous;private int consumed=-1;
+ private static SimpleCache cache;
+ private final Activity activity;private final FrameLayout host;private FrameLayout overlay;private PlayerView view;private ExoPlayer player;private TextView status;private View previous;private int consumed=-1,index,generation;private final ArrayList<String> sources=new ArrayList<>();private final Handler handler=new Handler(Looper.getMainLooper());private Runnable timeout;
+ private static synchronized SimpleCache cache(Context c){if(cache==null)cache=new SimpleCache(new File(c.getCacheDir(),"aerial-media"),new LeastRecentlyUsedCacheEvictor(256L*1024*1024),new StandaloneDatabaseProvider(c.getApplicationContext()));return cache;}
  AerialPlayer(Activity a,FrameLayout root){activity=a;host=root;}
  boolean visible(){return overlay!=null;}
  void start(String source){
-  if(visible())return;previous=activity.getCurrentFocus();overlay=new FrameLayout(activity);overlay.setBackgroundColor(Color.BLACK);overlay.setContentDescription("Économiseur aérien");overlay.setKeepScreenOn(true);host.addView(overlay,new FrameLayout.LayoutParams(-1,-1));
-  video=new VideoView(activity);overlay.addView(video,new FrameLayout.LayoutParams(-1,-1,Gravity.CENTER));
-  TextView status=new TextView(activity);status.setText("Chargement du paysage…");status.setTextColor(Color.WHITE);status.setGravity(Gravity.CENTER);overlay.addView(status,new FrameLayout.LayoutParams(-1,-1));
-  video.setOnPreparedListener(player->{player.setVolume(0,0);player.setLooping(true);status.setVisibility(View.GONE);video.start();});
-  video.setOnErrorListener((player,what,extra)->{status.setText("Vidéo indisponible. Vérifiez la connexion ou choisissez une vidéo locale.\nAppuyez sur une touche pour revenir.");return true;});
-  try{video.setVideoURI(Uri.parse(source));}catch(RuntimeException e){status.setText("Impossible d’ouvrir cette vidéo. Appuyez sur une touche pour revenir.");}
+  if(visible())return;
+  sources.clear();
+  if(source.startsWith("https://")||source.startsWith("http://")){sources.addAll(Arrays.asList("https://sylvan.apple.com/Videos/comp_DB_D011_C010_PSNK_DENOISE_v19_SDR_PS_20180914_SDR_2K_AVC.mov","https://sylvan.apple.com/Videos/comp_A114_C001_0305OT_v10_SDR_FINAL_22062018_SDR_2K_AVC.mov","https://sylvan.apple.com/Videos/comp_GL_G004_C010_PSNK_v04_SDR_PS_FINAL_20180709_SDR_2K_AVC.mov","https://sylvan.apple.com/Videos/comp_N008_C003_PS_v01_SDR_PS_20180925_SDR_2K_AVC.mov"));if(!sources.contains(source))sources.add(source);}else sources.add(source);
+  index=0;previous=activity.getCurrentFocus();overlay=new FrameLayout(activity);overlay.setBackgroundColor(Color.BLACK);overlay.setContentDescription("Économiseur aérien");overlay.setKeepScreenOn(true);host.addView(overlay,new FrameLayout.LayoutParams(-1,-1));
+  view=new PlayerView(activity);view.setUseController(false);view.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_ZOOM);view.setFocusable(false);overlay.addView(view,new FrameLayout.LayoutParams(-1,-1));
+  status=new TextView(activity);status.setTextColor(Color.WHITE);status.setGravity(Gravity.CENTER);status.setPadding(32,32,32,32);overlay.addView(status,new FrameLayout.LayoutParams(-1,-1));play();
  }
+ private void play(){
+  if(!visible())return;releasePlayer();final int token=++generation;
+  status.setVisibility(View.VISIBLE);status.setText("Chargement du paysage… "+(index+1)+"/"+sources.size());
+  DefaultHttpDataSource.Factory http=new DefaultHttpDataSource.Factory().setUserAgent("GlassTV/AndroidTV").setConnectTimeoutMs(8000).setReadTimeoutMs(12000);
+  DataSource.Factory upstream=new DefaultDataSource.Factory(activity,http);
+  CacheDataSource.Factory data=new CacheDataSource.Factory().setCache(cache(activity)).setUpstreamDataSourceFactory(upstream).setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR);
+  DefaultMediaSourceFactory media=new DefaultMediaSourceFactory(data).setLoadErrorHandlingPolicy(new androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy(1));
+  player=new ExoPlayer.Builder(activity,new DefaultRenderersFactory(activity).setEnableDecoderFallback(true)).setMediaSourceFactory(media).build();view.setPlayer(player);player.setVolume(0);
+  player.addListener(new Player.Listener(){
+   @Override public void onRenderedFirstFrame(){if(token!=generation)return;cancelTimeout();status.setVisibility(View.GONE);Log.i("GLASSTV_AERIAL","FIRST_FRAME source="+index);}
+   @Override public void onPlayerError(PlaybackException error){if(token!=generation)return;Log.w("GLASSTV_AERIAL",error.getErrorCodeName(),error);next(error.getErrorCodeName());}
+   @Override public void onPlaybackStateChanged(int state){if(state==Player.STATE_ENDED&&token==generation){index=(index+1)%sources.size();play();}}
+  });
+  player.setMediaItem(MediaItem.fromUri(Uri.parse(sources.get(index))));player.prepare();player.play();
+  timeout=()->{if(token==generation)next("TIMEOUT");};handler.postDelayed(timeout,22000);
+ }
+ private void next(String reason){cancelTimeout();if(++index<sources.size()){play();return;}releasePlayer();status.setVisibility(View.VISIBLE);status.setText("Aucune source lisible ("+reason+").\nEssayez une vidéo locale ou réessayez plus tard.\nAppuyez sur une touche pour revenir.");}
+ private void cancelTimeout(){if(timeout!=null){handler.removeCallbacks(timeout);timeout=null;}}
+ private void releasePlayer(){cancelTimeout();generation++;if(view!=null)view.setPlayer(null);if(player!=null){player.release();player=null;}}
  boolean key(KeyEvent event){if(consumed==event.getKeyCode()){if(event.getAction()==KeyEvent.ACTION_UP)consumed=-1;return true;}if(!visible())return false;consumed=event.getKeyCode();stop();if(event.getAction()==KeyEvent.ACTION_UP)consumed=-1;return true;}
- void stop(){if(video!=null){video.stopPlayback();video=null;}if(overlay!=null){overlay.setKeepScreenOn(false);host.removeView(overlay);overlay=null;}if(previous!=null){previous.requestFocus();previous=null;}}
+ void stop(){releasePlayer();if(overlay!=null){overlay.setKeepScreenOn(false);host.removeView(overlay);overlay=null;view=null;}if(previous!=null){previous.requestFocus();previous=null;}}
 }
