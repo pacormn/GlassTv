@@ -121,6 +121,7 @@ public class MainActivity extends Activity {
     }
     private String greeting(){int hour=Calendar.getInstance().get(Calendar.HOUR_OF_DAY);return (hour>=6&&hour<18?"Bonjour":"Bonsoir")+" Paco";}
     private void animatePage(int target,boolean grid){
+        if(favoritesBar!=null)favoritesBar.setTranslationY(Math.max(0,scroll.getScrollY()-favoritesBar.getTop()+px(20)));
         int max=Math.max(0,content.getHeight()-scroll.getHeight());
         target=Math.max(0,Math.min(target,max));
         if(animatedGrid==null||animatedGrid!=grid){
