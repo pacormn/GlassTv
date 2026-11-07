@@ -26,13 +26,13 @@ final class AerialPlayer {
   player=new ExoPlayer.Builder(activity,new DefaultRenderersFactory(activity).setEnableDecoderFallback(true)).setMediaSourceFactory(media).build();view.setPlayer(player);player.setVolume(0);
   player.addListener(new Player.Listener(){
    @Override public void onRenderedFirstFrame(){if(token!=generation)return;cancelTimeout();status.setVisibility(View.GONE);Log.i("GLASSTV_AERIAL","FIRST_FRAME source="+index);}
-   @Override public void onPlayerError(PlaybackException error){if(token!=generation)return;Log.w("GLASSTV_AERIAL",error.getErrorCodeName(),error);next(error.getErrorCodeName());}
+   @Override public void onPlayerError(PlaybackException error){if(token!=generation)return;Log.w("GLASSTV_AERIAL",error.getErrorCodeName(),error);String reason=error.getErrorCodeName();for(Throwable cause=error;cause!=null;cause=cause.getCause())if(cause instanceof javax.net.ssl.SSLException){reason="CERTIFICAT_HTTPS";break;}next(reason);}
    @Override public void onPlaybackStateChanged(int state){if(state==Player.STATE_ENDED&&token==generation){int count=0;do{index=(index+1)%sources.size();count++;}while(failed[index]&&count<sources.size());play();}}
   });
   player.setMediaItem(MediaItem.fromUri(Uri.parse(sources.get(index))));player.prepare();player.play();
   timeout=()->{if(token==generation)next("TIMEOUT");};handler.postDelayed(timeout,22000);
  }
- private void next(String reason){cancelTimeout();failed[index]=true;for(int count=0;count<sources.size();count++){index=(index+1)%sources.size();if(!failed[index]){play();return;}}releasePlayer();status.setVisibility(View.VISIBLE);status.setText("Aucune source lisible ("+reason+").\nEssayez une vidéo locale ou réessayez plus tard.\nAppuyez sur une touche pour revenir.");}
+ private void next(String reason){cancelTimeout();failed[index]=true;for(int count=0;count<sources.size();count++){index=(index+1)%sources.size();if(!failed[index]){play();return;}}releasePlayer();status.setVisibility(View.VISIBLE);status.setText(reason.equals("CERTIFICAT_HTTPS")?"Certificat HTTPS refusé. Vérifiez la date et les mises à jour système, ou choisissez une vidéo locale.\nAppuyez sur une touche pour revenir.":"Aucune source lisible ("+reason+").\nEssayez une vidéo locale ou réessayez plus tard.\nAppuyez sur une touche pour revenir.");}
  private void cancelTimeout(){if(timeout!=null){handler.removeCallbacks(timeout);timeout=null;}}
  private void releasePlayer(){cancelTimeout();generation++;if(view!=null)view.setPlayer(null);if(player!=null){player.release();player=null;}}
  boolean key(KeyEvent event){if(consumed==event.getKeyCode()){if(event.getAction()==KeyEvent.ACTION_UP)consumed=-1;return true;}if(!visible())return false;consumed=event.getKeyCode();stop();if(event.getAction()==KeyEvent.ACTION_UP)consumed=-1;return true;}
