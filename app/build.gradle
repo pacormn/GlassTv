@@ -4,12 +4,16 @@ android {
     namespace 'com.glasstv.launcher'
     compileSdk 35
 
+    buildFeatures { buildConfig true }
+
     defaultConfig {
+        def tmdbKey = System.getenv('TMDB_API_KEY') ?: ''
+        buildConfigField 'String', 'TMDB_API_KEY', "\"${tmdbKey}\""
         applicationId 'com.glasstv.launcher'
         minSdk 28
         targetSdk 35
-        versionCode 9
-        versionName '0.5.2'
+        versionCode 10
+        versionName '0.5.3'
     }
     signingConfigs {
         permanent {
