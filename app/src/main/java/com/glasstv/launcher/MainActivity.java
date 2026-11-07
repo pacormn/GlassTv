@@ -60,27 +60,51 @@ public class MainActivity extends Activity {
     private ScrollView panelScroll;
     private final java.util.concurrent.ExecutorService images=java.util.concurrent.Executors.newSingleThreadExecutor();
     private int imageGeneration;
-    private final ArrayList<String> tmdbBackdrops = new ArrayList<>();
+    private static class TmdbMovie {
+        int id, runtimeMinutes;
+        String title="", backdropPath="", logoPath="";
+        final ArrayList<String> genres = new ArrayList<>();
+        Bitmap logoBitmap;
+        boolean logoRequested;
+        String subtitle() {
+            String genreText = android.text.TextUtils.join(" · ", genres);
+            String duration = runtimeMinutes > 0 ? (runtimeMinutes / 60 > 0
+                ? (runtimeMinutes / 60) + " h " + String.format(Locale.FRANCE, "%02d", runtimeMinutes % 60) + " min"
+                : runtimeMinutes + " min") : "Durée indisponible";
+            return genreText.isEmpty() ? duration : genreText + "   ·   " + duration;
+        }
+    }
+    private final ArrayList<TmdbMovie> tmdbMovies = new ArrayList<>();
+    private final java.util.concurrent.ExecutorService tmdbRequests = java.util.concurrent.Executors.newSingleThreadExecutor();
     private int tmdbIndex, tmdbGeneration;
+    private TmdbMovie activeTmdbMovie;
+    private boolean showFilmHero;
+    private ImageView heroLogo;
+    private final Runnable filmHeroTask = () -> {
+        if (!resumed || appsPage || activeTmdbMovie == null || !prefs.getString("backdrop", "").isEmpty()) return;
+        showFilmHero = true;
+        heroTitle.setAlpha(1f); heroSubtitle.setAlpha(1f); heroLogo.setAlpha(1f);
+        applyFilmHero();
+    };
     private final Runnable tmdbSlide = new Runnable() {
         @Override public void run() {
             if (!resumed) return;
-            if (prefs.getString("backdrop", "").isEmpty() && !tmdbBackdrops.isEmpty() && !appsPage) showNextTmdbBackdrop(tmdbGeneration);
+            if (prefs.getString("backdrop", "").isEmpty() && !tmdbMovies.isEmpty() && !appsPage) showNextTmdbBackdrop(tmdbGeneration);
             handler.postDelayed(this, 15000);
         }
     };
     private boolean hasTmdbKey() { return !BuildConfig.TMDB_API_KEY.isEmpty(); }
     private void startTmdbSlideshow() {
         if (!hasTmdbKey() || !prefs.getString("backdrop", "").isEmpty()) return;
-        if (!tmdbBackdrops.isEmpty()) {
-            handler.removeCallbacks(tmdbSlide);
-            showNextTmdbBackdrop(tmdbGeneration);
+        final int generation = ++tmdbGeneration;
+        handler.removeCallbacks(tmdbSlide);
+        if (!tmdbMovies.isEmpty()) {
+            showNextTmdbBackdrop(generation);
             handler.postDelayed(tmdbSlide, 15000);
             return;
         }
-        final int generation = ++tmdbGeneration;
-        images.execute(() -> {
-            ArrayList<String> paths = new ArrayList<>();
+        tmdbRequests.execute(() -> {
+            ArrayList<TmdbMovie> movies = new ArrayList<>();
             for (String category : new String[]{"now_playing", "upcoming"}) {
                 java.net.HttpURLConnection connection = null;
                 try {
@@ -88,8 +112,7 @@ public class MainActivity extends Activity {
                         + "?api_key=" + java.net.URLEncoder.encode(BuildConfig.TMDB_API_KEY, "UTF-8")
                         + "&language=fr-FR&region=FR&page=1";
                     connection = (java.net.HttpURLConnection) new java.net.URL(address).openConnection();
-                    connection.setConnectTimeout(8000);
-                    connection.setReadTimeout(10000);
+                    connection.setConnectTimeout(8000); connection.setReadTimeout(10000);
                     connection.setRequestProperty("Accept", "application/json");
                     if (connection.getResponseCode() != 200) continue;
                     try (java.io.InputStream input = connection.getInputStream();
@@ -99,18 +122,31 @@ public class MainActivity extends Activity {
                             output.write(buffer, 0, count); total += count;
                         }
                         org.json.JSONArray results = new org.json.JSONObject(output.toString("UTF-8")).optJSONArray("results");
-                        if (results != null) for (int i = 0; i < results.length() && paths.size() < 12; i++) {
-                            String path = results.optJSONObject(i) == null ? null : results.optJSONObject(i).optString("backdrop_path", "");
-                            if (path != null && !path.isEmpty() && !paths.contains(path)) paths.add(path);
+                        if (results != null) for (int i = 0; i < results.length() && movies.size() < 8; i++) {
+                            org.json.JSONObject item = results.optJSONObject(i);
+                            if (item == null) continue;
+                            String backdrop = item.optString("backdrop_path", "");
+                            if (backdrop.isEmpty()) continue;
+                            TmdbMovie movie = new TmdbMovie();
+                            movie.id = item.optInt("id");
+                            movie.title = item.optString("title", item.optString("original_title", "Film"));
+                            movie.backdropPath = backdrop;
+                            org.json.JSONArray genreIds = item.optJSONArray("genre_ids");
+                            if (genreIds != null) for (int j = 0; j < genreIds.length(); j++) {
+                                String genre = frenchGenre(genreIds.optInt(j));
+                                if (genre != null && !movie.genres.contains(genre)) movie.genres.add(genre);
+                            }
+                            if (movie.id > 0 && !movie.title.isEmpty()) movies.add(movie);
                         }
                     }
                 } catch (Exception ignored) {
                 } finally { if (connection != null) connection.disconnect(); }
+                if (movies.size() >= 8) break;
             }
             handler.post(() -> {
                 if (isDestroyed() || generation != tmdbGeneration || !prefs.getString("backdrop", "").isEmpty()) return;
-                tmdbBackdrops.clear(); tmdbBackdrops.addAll(paths); tmdbIndex = 0;
-                if (tmdbBackdrops.isEmpty()) {
+                tmdbMovies.clear(); tmdbMovies.addAll(movies); tmdbIndex = 0;
+                if (tmdbMovies.isEmpty()) {
                     Toast.makeText(this, "Aucune bannière TMDB disponible pour le moment", Toast.LENGTH_LONG).show();
                     return;
                 }
@@ -118,30 +154,143 @@ public class MainActivity extends Activity {
                 handler.removeCallbacks(tmdbSlide);
                 handler.postDelayed(tmdbSlide, 15000);
             });
+            for (TmdbMovie movie : movies) loadTmdbDetails(movie, generation);
         });
     }
+    private String frenchGenre(int id) {
+        switch (id) {
+            case 28: return "Action"; case 12: return "Aventure"; case 16: return "Animation";
+            case 35: return "Comédie"; case 80: return "Policier"; case 99: return "Documentaire";
+            case 18: return "Drame"; case 10751: return "Famille"; case 14: return "Fantastique";
+            case 36: return "Historique"; case 27: return "Horreur"; case 10402: return "Musique";
+            case 9648: return "Mystère"; case 10749: return "Romance"; case 878: return "Science-fiction";
+            case 10770: return "Téléfilm"; case 53: return "Thriller"; case 10752: return "Guerre";
+            case 37: return "Western"; default: return null;
+        }
+    }
+    private void loadTmdbDetails(TmdbMovie movie, int generation) {
+        java.net.HttpURLConnection connection = null;
+        try {
+            String address = "https://api.themoviedb.org/3/movie/" + movie.id
+                + "?api_key=" + java.net.URLEncoder.encode(BuildConfig.TMDB_API_KEY, "UTF-8")
+                + "&language=fr-FR&append_to_response=images&include_image_language=fr,en,null";
+            connection = (java.net.HttpURLConnection) new java.net.URL(address).openConnection();
+            connection.setConnectTimeout(8000); connection.setReadTimeout(10000);
+            connection.setRequestProperty("Accept", "application/json");
+            if (connection.getResponseCode() != 200) return;
+            try (java.io.InputStream input = connection.getInputStream();
+                 java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream()) {
+                byte[] buffer = new byte[8192]; int count, total = 0;
+                while ((count = input.read(buffer)) != -1 && total < 1_000_000) {
+                    output.write(buffer, 0, count); total += count;
+                }
+                org.json.JSONObject details = new org.json.JSONObject(output.toString("UTF-8"));
+                movie.runtimeMinutes = details.optInt("runtime", 0);
+                org.json.JSONArray genres = details.optJSONArray("genres");
+                if (genres != null && genres.length() > 0) {
+                    movie.genres.clear();
+                    for (int i = 0; i < genres.length(); i++) {
+                        String name = genres.optJSONObject(i) == null ? "" : genres.optJSONObject(i).optString("name", "");
+                        if (!name.isEmpty()) movie.genres.add(name);
+                    }
+                }
+                org.json.JSONObject images = details.optJSONObject("images");
+                org.json.JSONArray logos = images == null ? null : images.optJSONArray("logos");
+                if (logos != null) {
+                    org.json.JSONObject fallback = null, english = null, french = null;
+                    for (int i = 0; i < logos.length(); i++) {
+                        org.json.JSONObject logo = logos.optJSONObject(i);
+                        if (logo == null || logo.optString("file_path", "").isEmpty()) continue;
+                        String language = logo.optString("iso_639_1", "");
+                        if ("fr".equals(language)) { french = logo; break; }
+                        if ("en".equals(language)) english = logo;
+                        if ("null".equals(language) || language.isEmpty()) fallback = logo;
+                    }
+                    org.json.JSONObject selected = french != null ? french : english != null ? english : fallback;
+                    if (selected != null) movie.logoPath = selected.optString("file_path", "");
+                }
+            }
+            handler.post(() -> {
+                if (isDestroyed() || generation != tmdbGeneration) return;
+                if (showFilmHero && activeTmdbMovie == movie) applyFilmHero();
+            });
+        } catch (Exception ignored) {
+        } finally { if (connection != null) connection.disconnect(); }
+    }
+    private void showGreeting() {
+        handler.removeCallbacks(filmHeroTask);
+        showFilmHero = false;
+        heroTitle.setText(greeting());
+        heroTitle.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        heroTitle.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, px(56));
+        heroTitle.setVisibility(View.VISIBLE); heroTitle.setAlpha(1f);
+        heroSubtitle.setVisibility(View.GONE); heroLogo.setVisibility(View.GONE);
+    }
     private void showNextTmdbBackdrop(int generation) {
-        if (generation != tmdbGeneration || tmdbBackdrops.isEmpty() || !prefs.getString("backdrop", "").isEmpty()) return;
-        String path = tmdbBackdrops.get(tmdbIndex++ % tmdbBackdrops.size());
+        if (generation != tmdbGeneration || tmdbMovies.isEmpty() || !prefs.getString("backdrop", "").isEmpty()) return;
+        TmdbMovie movie = tmdbMovies.get(tmdbIndex++ % tmdbMovies.size());
+        activeTmdbMovie = movie;
+        showGreeting();
         images.execute(() -> {
             java.net.HttpURLConnection connection = null;
             try {
-                connection = (java.net.HttpURLConnection) new java.net.URL("https://image.tmdb.org/t/p/w1280" + path).openConnection();
+                connection = (java.net.HttpURLConnection) new java.net.URL("https://image.tmdb.org/t/p/w1280" + movie.backdropPath).openConnection();
                 connection.setConnectTimeout(8000); connection.setReadTimeout(12000);
                 try (java.io.InputStream input = connection.getInputStream()) {
                     Bitmap bitmap = BitmapFactory.decodeStream(input);
                     if (bitmap != null) handler.post(() -> {
-                        if (!isDestroyed() && generation == tmdbGeneration && prefs.getString("backdrop", "").isEmpty() && !appsPage) {
-                            backdrop.animate().cancel();
-                            backdrop.setImageBitmap(bitmap);
-                            backdrop.setAlpha(0f);
-                            backdrop.animate().alpha(.8f).setDuration(duration(700)).start();
+                        if (!isDestroyed() && generation == tmdbGeneration && activeTmdbMovie == movie
+                                && prefs.getString("backdrop", "").isEmpty() && !appsPage) {
+                            backdrop.animate().cancel(); backdrop.setImageBitmap(bitmap);
+                            backdrop.setAlpha(0f); backdrop.animate().alpha(.8f).setDuration(duration(700)).start();
+                            handler.removeCallbacks(filmHeroTask);
+                            handler.postDelayed(filmHeroTask, 3000);
                         }
                     });
                 }
             } catch (Exception ignored) {
             } finally { if (connection != null) connection.disconnect(); }
         });
+    }
+    private void applyFilmHero() {
+        TmdbMovie movie = activeTmdbMovie;
+        if (movie == null || !showFilmHero) return;
+        heroSubtitle.setText(movie.subtitle());
+        heroSubtitle.setVisibility(View.VISIBLE);
+        heroTitle.setText(movie.title);
+        heroTitle.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD));
+        heroTitle.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, px(68));
+        heroTitle.setVisibility(View.VISIBLE);
+        heroLogo.setVisibility(View.GONE);
+        if (!movie.logoPath.isEmpty()) {
+            if (movie.logoBitmap != null) {
+                heroLogo.setImageBitmap(movie.logoBitmap);
+                heroLogo.setVisibility(View.VISIBLE); heroTitle.setVisibility(View.GONE);
+            } else if (!movie.logoRequested) {
+                movie.logoRequested = true;
+                final int generation = tmdbGeneration;
+                images.execute(() -> {
+                    java.net.HttpURLConnection connection = null;
+                    try {
+                        connection = (java.net.HttpURLConnection) new java.net.URL("https://image.tmdb.org/t/p/w500" + movie.logoPath).openConnection();
+                        connection.setConnectTimeout(8000); connection.setReadTimeout(10000);
+                        try (java.io.InputStream input = connection.getInputStream()) { movie.logoBitmap = BitmapFactory.decodeStream(input); }
+                    } catch (Exception ignored) {
+                    } finally { if (connection != null) connection.disconnect(); }
+                    handler.post(() -> {
+                        if (!isDestroyed() && generation == tmdbGeneration && showFilmHero && activeTmdbMovie == movie && movie.logoBitmap != null) {
+                            heroLogo.setImageBitmap(movie.logoBitmap);
+                            heroLogo.setVisibility(View.VISIBLE); heroTitle.setVisibility(View.GONE);
+                        }
+                    });
+                });
+            }
+        }
+    }
+    private void scheduleFilmHero() {
+        handler.removeCallbacks(filmHeroTask);
+        if (!showFilmHero && activeTmdbMovie != null && prefs.getString("backdrop", "").isEmpty())
+            handler.postDelayed(filmHeroTask, 3000);
     }
     private void refreshTmdb() {
         if (!hasTmdbKey()) {
@@ -150,7 +299,7 @@ public class MainActivity extends Activity {
             return;
         }
         prefs.edit().remove("backdrop").apply();
-        tmdbBackdrops.clear(); tmdbIndex = 0; tmdbGeneration++;
+        tmdbMovies.clear(); tmdbIndex = 0; tmdbGeneration++;
         closeControls();
         startTmdbSlideshow();
     }
@@ -193,7 +342,7 @@ public class MainActivity extends Activity {
         if(request==42&&result==RESULT_OK&&data!=null&&data.getData()!=null) {
             android.net.Uri uri=data.getData();
             try{getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(SecurityException ignored){}
-            prefs.edit().putString("backdrop",uri.toString()).apply();tmdbGeneration++;handler.removeCallbacks(tmdbSlide);loadBackdrop(uri);
+            prefs.edit().putString("backdrop",uri.toString()).apply();tmdbGeneration++;handler.removeCallbacks(tmdbSlide);showGreeting();loadBackdrop(uri);
         }
     }
     private boolean backHeld;
@@ -205,7 +354,7 @@ public class MainActivity extends Activity {
     private final Runnable clockTick = new Runnable() {
         public void run() {
             if (!resumed) return;
-            heroTitle.setText(greeting());
+            if (!showFilmHero) heroTitle.setText(greeting());
             time.setText(new SimpleDateFormat("HH:mm", Locale.FRANCE).format(new Date()));
             handler.postDelayed(this, 10000);
         }
@@ -222,6 +371,9 @@ public class MainActivity extends Activity {
             animatedGrid=grid;heroTitle.animate().cancel();
             heroTitle.animate().alpha(grid?0:1).translationY(grid?-px(14):0).setDuration(duration(220)).start();
             backdrop.animate().cancel();backdrop.animate().alpha(grid?.35f:.8f).setDuration(duration(300)).start();
+            if (heroLogo != null) heroLogo.animate().alpha(grid?0:1).setDuration(duration(220)).start();
+            if (heroSubtitle != null) heroSubtitle.animate().alpha(grid?0:1).setDuration(duration(220)).start();
+            if (!grid) scheduleFilmHero();
         }
         if(pageAnimator!=null&&pageAnimator.isRunning()&&target==pageTarget)return;
         if(pageAnimator!=null)pageAnimator.cancel();
@@ -292,8 +444,10 @@ public class MainActivity extends Activity {
         headerButton=button;root.addView(button,frame(100,66,Gravity.TOP,1701,48));
         heroTitle=text(greeting(),56,Color.WHITE);heroTitle.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
         root.addView(heroTitle,frame(1450,90,Gravity.TOP,112,83));
-        heroSubtitle=text("Vos applications. Au premier plan.",27,0xaaffffff);
-        heroSubtitle.setVisibility(View.GONE);
+        heroLogo = new ImageView(this); heroLogo.setScaleType(ImageView.ScaleType.FIT_START); heroLogo.setVisibility(View.GONE);
+        root.addView(heroLogo,frame(920,160,Gravity.TOP,112,48));
+        heroSubtitle=text("",25,0xddffffff); heroSubtitle.setVisibility(View.GONE);
+        root.addView(heroSubtitle,frame(1450,40,Gravity.TOP,112,225));
     }
     @Override protected void onResume() {
         super.onResume(); updates.resume();resumed=true; root.setAlpha(1f);root.setScaleX(1);root.setScaleY(1);startTmdbSlideshow();
@@ -301,7 +455,7 @@ public class MainActivity extends Activity {
         refreshApps(); handler.removeCallbacks(clockTick);clockTick.run();resetIdle();
     }
     @Override protected void onPause() { super.onPause();aerial.stop();handler.removeCallbacks(tmdbSlide);handler.removeCallbacks(idleSaver);if(pageAnimator!=null)pageAnimator.cancel();updates.pause();resumed=false;handler.removeCallbacks(clockTick);handler.removeCallbacks(holdBack);handler.removeCallbacks(singleMenu);handler.removeCallbacks(holdMenu);lastMenuUp=0;root.animate().cancel(); }
-    @Override protected void onDestroy() { if(pageAnimator!=null)pageAnimator.cancel();images.shutdownNow();updates.close();handler.removeCallbacksAndMessages(null);super.onDestroy(); }
+    @Override protected void onDestroy() { if(pageAnimator!=null)pageAnimator.cancel();tmdbRequests.shutdownNow();images.shutdownNow();updates.close();handler.removeCallbacksAndMessages(null);super.onDestroy(); }
     private void refreshApps() {
         String selected=lastFocus instanceof Card?((Card)lastFocus).app.pkg:"";
         LinkedHashMap<String,App> found=new LinkedHashMap<>();
@@ -395,7 +549,7 @@ public class MainActivity extends Activity {
                 shine.animate().alpha(focused?1:.15f).setDuration(duration(220)).start();label.animate().alpha(focused?1:.58f).setDuration(duration(180)).start();
                 if(focused) {reveal(this);
                     if(dock)post(()->{Rect safe=new Rect();getDrawingRect(safe);safe.inset(-px(22),-px(20));requestRectangleOnScreen(safe,false);});
-                    lastFocus=this;heroTitle.setText(greeting());
+                    lastFocus=this;if(!showFilmHero)heroTitle.setText(greeting());
                     wallpaper.animate().translationX(px((index%5-2)*-7)).translationY(px(index<5?0:-12)).setDuration(duration(600)).setInterpolator(new DecelerateInterpolator()).start();
                 }
             });
@@ -455,7 +609,7 @@ public class MainActivity extends Activity {
         control(sheet,"Choisir la bannière",this::chooseBackdrop);
         control(sheet,"Actualiser les applications",()->{closeControls();refreshApps();});
         TextView close=control(sheet,"Fermer",this::closeControls);first.setNextFocusUpId(first.getId());close.setNextFocusDownId(close.getId());
-        TextView version=text("GlassTV 0.5.0  •  Interface locale",19,0x88ffffff);version.setPadding(0,px(25),0,0);sheet.addView(version);
+        TextView version=text("GlassTV "+appVersion()+"  •  Interface locale",19,0x88ffffff);version.setPadding(0,px(25),0,0);sheet.addView(version);
         sheet.setTranslationX(px(90));sheet.setAlpha(0);sheet.animate().translationX(0).alpha(1).setDuration(duration(280)).setInterpolator(new DecelerateInterpolator()).start();
         for(int i=0;i<panelButtons.size();i++){TextView v=panelButtons.get(i);v.setNextFocusUpId(panelButtons.get(Math.max(0,i-1)).getId());v.setNextFocusDownId(panelButtons.get(Math.min(panelButtons.size()-1,i+1)).getId());}
         first.requestFocus();
