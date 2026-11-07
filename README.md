@@ -2,27 +2,36 @@
 
 ## Installer sur la TV
 
-### [⬇ Télécharger GlassTV 0.4.2.apk](https://github.com/pacormn/GlassTv/releases/download/v0.4.2/GlassTV-0.4.2-debug.apk)
+### [⬇ Télécharger la dernière version publiée](https://github.com/pacormn/GlassTv/releases/latest)
 
-Ouvrir ce lien dans le navigateur de la TV ou Downloader puis installer l'APK.
-[Voir les fichiers de la Release](https://github.com/pacormn/GlassTv/releases/tag/v0.4.2).
+Dans la Release, ouvrir **Assets**, puis le fichier APK avec le navigateur de la TV ou Downloader.
 
-Les APK utilisent actuellement des signatures debug de runners distincts. Si Android refuse la mise à jour pour incompatibilité de signature, désinstaller l'ancienne version puis installer celle-ci (les réglages seront effacés). Une clé de signature durable reste nécessaire pour garantir les mises à jour sur place entre toutes les compilations.
+## Version 0.5.2 préparée
 
-## Défilement 0.4.2
+Le code est compilé et testé. La publication de cette version attend la configuration de la signature permanente :
 
-Le défilement clavier natif est désactivé dans la grille pour éviter son conflit avec l'animation de transition. Les déplacements de focus ne relancent plus une animation vers la même destination ; la grille ne se déplace que lorsque la sélection sort de la zone visible. Les anciens déplacements en attente sont remplacés par le plus récent et le rebond des tuiles est supprimé.
+1. Ouvrir [les secrets GitHub Actions](https://github.com/pacormn/GlassTv/settings/secrets/actions/new).
+2. Créer le secret **GLASSTV_SIGNING_JSON**, contenant tout le contenu du fichier privé GlassTV-signing-secret.txt fourni au propriétaire.
+3. Dans **Actions → Build GlassTV APK**, choisir **Run workflow** sur main.
 
-Compilation, lint et test de navigation Android 11 réussis. La fluidité sur la Xiaomi réelle reste à vérifier ; aucun objectif de fréquence d'images n'est garanti par le test d'émulateur.
+Ne jamais ajouter cette clé au dépôt. Sans ce secret, le workflow compile et teste, mais ne publie aucun APK en Release. Une ancienne installation signée avec une autre clé devra être désinstallée une fois, ce qui efface les réglages. Les versions suivantes conserveront la même signature.
 
-## Accueil épuré
+## Accueil et navigation
 
-- « Bonjour Paco » entre 6 h et 18 h, puis « Bonsoir Paco », selon l'heure de la box ; actualisé pendant l'utilisation.
-- Aucun nom GlassTV ni sous-titre d'application dans l'en-tête.
-- Cinq emplacements fixes de favoris, sans sixième tuile. Les emplacements libres sont remplis avec d'autres applications installées ; si moins de cinq applications existent, des emplacements visuels vides complètent la rangée.
-- Appui long OK sur une application : choisir l'un des cinq emplacements à remplacer. Une application déjà favorite échange sa place avec celle choisie.
-- Descendre révèle toutes les applications, avec un défilement animé à ralentissement progressif, un fondu de la salutation et une atténuation du fond. Les animations réduites restent disponibles.
-- Bannière personnalisable depuis le centre de contrôle, via le sélecteur Android. Les suggestions cinéma et historiques vidéo ne sont pas connectés.
+- « Bonjour Paco » entre 6 h et 18 h, puis « Bonsoir Paco », selon l'heure de la box. Le texte est placé plus haut.
+- Cinq emplacements fixes de favoris. La barre remonte en haut pendant le passage aux applications et conserve son opacité.
+- Défilement animé avec déplacements de focus regroupés, sans animation concurrente du ScrollView. Marges autour de la sélection et découpage des lignes hors écran.
+- Bouton supérieur arrondi avec animation de focus et survol. Centre de contrôle inspiré du verre translucide, défilant indépendamment des applications.
+- Appui long OK sur une application : choisir l'un des cinq favoris à remplacer. Une application déjà favorite échange sa place avec celle choisie.
+- Bannière personnalisable via le sélecteur Android. Le diaporama des dernières sorties cinéma et l'historique vidéo ne sont pas connectés.
+
+## Économiseur vidéo
+
+Lecteur Media3 avec quatre sources aériennes AVC/H.264, passage à la suivante en cas d'échec, délai d'attente limité et cache disque plafonné à 256 Mo. Ce cache ne garantit pas la disponibilité hors ligne de toutes les vidéos.
+
+Le centre de contrôle permet de choisir une vidéo locale ; privilégier un MP4 H.264. Le mode développeur affiche la version en bas à droite et donne accès au bouton de test de l'économiseur. Une touche quitte la vidéo sans ouvrir une application derrière.
+
+Les erreurs de certificat HTTPS sont distinguées des autres échecs. La validation TLS reste active. L'accès aux sources distantes doit encore être confirmé sur la Xiaomi : l'environnement de test intercepte HTTPS et n'a pas permis de le valider. Le décodage d'une vidéo locale H.264 a été vérifié jusqu'à la première image réellement rendue.
 
 ## Télécommande Xiaomi
 
@@ -35,30 +44,20 @@ Compilation, lint et test de navigation Android 11 réussis. La fluidité sur la
 | Maintenir Retour | Ouvrir le centre de contrôle |
 | Bouton en haut à droite | Ouvrir le centre de contrôle |
 
-Les gestes Menu restent disponibles pour les télécommandes qui transmettent cette touche.
+Le centre de contrôle conserve le focus jusqu'au dernier bouton. Les gestes Menu restent disponibles pour les télécommandes qui transmettent cette touche.
 
-Le centre de contrôle défile et conserve le focus dans son panneau, jusqu'au dernier bouton, sans naviguer vers les applications derrière.
-
-« Définir comme accueil » utilise le rôle Android HOME. Un firmware Xiaomi peut continuer à ouvrir Android TV via la touche Maison même si ce rôle est attribué à GlassTV. Un remappage global distinct, configuré sur la box, peut alors être nécessaire. GlassTV ne désactive pas le launcher système. Google, volume, Netflix et Prime restent gérés par Android.
+« Définir comme accueil » utilise le rôle Android HOME. Le firmware Xiaomi peut continuer à ouvrir Android TV avec Maison. Un remappage global distinct peut être nécessaire ; GlassTV ne désactive pas le launcher système.
 
 ## Mises à jour
 
-Activées par défaut à la demande du propriétaire :
-- Recherche des Releases du dépôt au retour dans GlassTV, au maximum une fois toutes les six heures. Aucune recherche périodique lorsque GlassTV n'est pas actif.
-- Téléchargement automatique d'une version plus récente par le gestionnaire Android.
-- Vérification SHA-256 avant de proposer l'installation.
-- Confirmation via l'installateur Android et autorisation d'installation depuis GlassTV si nécessaire.
-- Options « Mises à jour auto » et « Rechercher une mise à jour » dans le centre de contrôle.
+Recherche au retour dans GlassTV, au maximum toutes les six heures, téléchargement automatique et vérification SHA-256, du paquet, de la version et de la compatibilité de signature avant l'installateur Android. L'installation demande la confirmation Android et, si nécessaire, l'autorisation d'installer depuis GlassTV. Une installation silencieuse n'est pas implémentée.
 
-Les préversions de ce dépôt sont incluses. Une installation silencieuse n'est pas implémentée. Les signatures debug différentes peuvent empêcher l'installation sur place. La vérification d'empreinte ne corrige pas cette incompatibilité.
+La migration depuis une ancienne signature debug exige une réinstallation. La mise à jour sur la Xiaomi physique reste à valider de bout en bout.
 
 ## Compilation et validation
 
-Android 9 minimum / API 28, cible API 35, compatible Android TV 11 / API 30. APK universel sans bibliothèque native.
-Java 17, Android Gradle Plugin 8.6.1 et Gradle 8.10.2.
+Android 9 minimum / API 28, cible API 35, compatible Android TV 11 / API 30. Java 17, Android Gradle Plugin 8.6.1 et Gradle 8.10.2.
 
-GitHub Actions compile, exécute lint, vérifie la signature, teste le démarrage et la navigation dans un émulateur Android 11, puis publie une préversion avec APK et SHA-256. Le test vérifie la sélection du dernier bouton du centre de contrôle et la visibilité de la sélection dans la grille.
+[Validation 0.5.2 réussie](https://github.com/pacormn/GlassTv/actions/runs/42317520083) : compilation, lint, signature de l'APK de test, démarrage Android 11, décodage local H.264, sortie de l'économiseur, dernier bouton du panneau et visibilité de la sélection dans la grille. La fluidité réelle et la lecture distante restent à vérifier sur la box.
 
-La détection et l'installation d'une future mise à jour n'ont pas encore été validées de bout en bout sur la Xiaomi physique. La fluidité réelle et les particularités des touches restent à vérifier sur la box.
-
-L'application demande Internet pour les mises à jour et l'autorisation de demander une installation. Aucune télémétrie ni publicité. Le dépôt et les Releases sont publics par choix du propriétaire. L'interface est inspirée de tvOS sans affiliation à Apple ni services Apple intégrés.
+La Release n'est publiée que si les tests réussissent et que la signature permanente est configurée. Le dépôt est public par choix du propriétaire. Aucune télémétrie ni publicité. Interface inspirée de tvOS, sans affiliation à Apple.
