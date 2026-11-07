@@ -2,13 +2,13 @@
 
 ## Installer sur la TV
 
-### [⬇ Télécharger GlassTV 0.5.3.apk](https://github.com/pacormn/GlassTv/releases/download/v0.5.3/GlassTV-0.5.3.apk)
+### [⬇ Télécharger GlassTV 0.5.4.apk](https://github.com/pacormn/GlassTv/releases/download/v0.5.4/GlassTV-0.5.4.apk)
 
-Lien direct à ouvrir avec le navigateur de la TV ou Downloader. [Voir la Release 0.5.3](https://github.com/pacormn/GlassTv/releases/tag/v0.5.3).
+Lien direct à ouvrir avec le navigateur de la TV ou Downloader. [Voir la Release 0.5.4](https://github.com/pacormn/GlassTv/releases/tag/v0.5.4).
 
-## Version 0.5.3 publiée
+## Version 0.5.4 publiée
 
-Le diaporama utilise TMDB en français pour les films en salle et les prochaines sorties en France ; les bannières changent automatiquement toutes les 15 secondes. La clé est stockée dans les secrets GitHub Actions, pas dans le dépôt. Comme l’application interroge TMDB directement, la clé est toutefois extractible de l’APK public.
+Le diaporama utilise TMDB en français pour les films en salle et les prochaines sorties en France ; les bannières changent toutes les 15 secondes. Trois secondes après chaque bannière, le titre du film apparaît avec son logo TMDB lorsqu’il existe, sinon en grand texte. Les genres et la durée apparaissent sur une même ligne. La clé est stockée dans les secrets GitHub Actions, pas dans le dépôt. Comme l’application interroge TMDB directement, la clé est toutefois extractible de l’APK public.
 
 Pour les prochaines compilations, les secrets **TMDB_API_KEY** et **GLASSTV_SIGNING_JSON** doivent rester configurés dans [GitHub Actions](https://github.com/pacormn/GlassTv/settings/secrets/actions). Lancer ensuite **Actions → Build GlassTV APK → Run workflow**. Conserver la même clé de signature pour installer les mises à jour sans désinstaller GlassTV. La migration depuis les premières versions signées en debug a nécessité une dernière désinstallation, qui efface les réglages.
 
@@ -54,6 +54,6 @@ La migration depuis une ancienne signature debug exige une réinstallation. La m
 
 Android 9 minimum / API 28, cible API 35, compatible Android TV 11 / API 30. Java 17, Android Gradle Plugin 8.6.1 et Gradle 8.10.2.
 
-[Validation 0.5.3](https://github.com/pacormn/GlassTv/actions/runs/42365904187) : compilation, lint, injection TMDB confirmée sans afficher la clé, signature permanente, démarrage Android 11 et navigation vérifiés. La fluidité réelle et la lecture distante de l’économiseur restent à vérifier sur la box.
+[Validation 0.5.4](https://github.com/pacormn/GlassTv/actions/runs/42366916483) : compilation, lint, injection TMDB confirmée sans afficher la clé, signature permanente, démarrage Android 11 et navigation vérifiés. La fluidité réelle et la lecture distante de l’économiseur restent à vérifier sur la box.
 
 La Release n'est publiée que si les tests réussissent et que la signature permanente est configurée. Le dépôt est public par choix du propriétaire. Aucune télémétrie ni publicité. Interface inspirée de tvOS, sans affiliation à Apple.
