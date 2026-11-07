@@ -6,17 +6,19 @@ adb("shell", "uiautomator", "dump", "/sdcard/setup.xml")
 xml = adb("shell", "cat", "/sdcard/setup.xml")
 url = re.search(r"http://[0-9.]+:[0-9]+/[a-f0-9-]+", xml).group()
 parsed = urllib.parse.urlsplit(url)
-adb("forward", "tcp:18765", "tcp:" + str(parsed.port))
+
 def request(method="GET", data=None, path=None, origin=None):
     headers = {"Host": parsed.netloc}
     if method == "POST":
         headers.update({"Origin": origin or "http://" + parsed.netloc, "Content-Type": "application/x-www-form-urlencoded"})
-    req = urllib.request.Request("http://127.0.0.1:18765" + (path or parsed.path), data=data, headers=headers, method=method)
-    try:
-        with urllib.request.urlopen(req, timeout=10) as response:
-            return response.status, response.read().decode()
-    except urllib.error.HTTPError as e:
-        return e.code, e.read().decode()
+    payload = data or b""
+    headers["Content-Length"] = str(len(payload))
+    headers["Connection"] = "close"
+    raw = (method + " " + (path or parsed.path) + " HTTP/1.1\r\n" + "".join(k + ": " + v + "\r\n" for k,v in headers.items()) + "\r\n").encode() + payload
+    result = subprocess.run(["adb", "shell", "toybox", "nc", "-w", "5", parsed.hostname, str(parsed.port)], input=raw, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15)
+    response = result.stdout.decode()
+    assert response.startswith("HTTP/1.1 "), "Local listener did not return HTTP: " + result.stderr.decode()
+    return int(response.split(" ", 2)[1]), response.split("\r\n\r\n", 1)[-1]
 assert request()[0] == 200
 assert request(path="/wrong")[0] == 404
 assert request("POST", b"key=bad")[0] == 400
@@ -30,5 +32,5 @@ adb("shell", "am", "force-stop", "com.glasstv.launcher")
 adb("shell", "am", "start", "-W", "-n", "com.glasstv.launcher/.MainActivity")
 assert dummy in adb("shell", "run-as", "com.glasstv.launcher", "cat", "shared_prefs/tmdb_private.xml")
 adb("shell", "run-as", "com.glasstv.launcher", "rm", "shared_prefs/tmdb_private.xml")
-adb("forward", "--remove", "tcp:18765")
+
 print("Phone setup: form, token, origin, invalid input, save, and persistence passed.")
