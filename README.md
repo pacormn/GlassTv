@@ -6,13 +6,15 @@
 
 Dans la Release, ouvrir **Assets**, puis le fichier APK avec le navigateur de la TV ou Downloader.
 
-## Version 0.5.2 préparée
+## Version 0.5.3 préparée
 
-Le code est compilé et testé. La publication de cette version attend la configuration de la signature permanente :
+Le code est compilé et testé. Le diaporama interroge TMDB en français pour les films en salle et les prochaines sorties en France ; les bannières changent automatiquement toutes les 15 secondes. La clé est injectée au moment de la compilation et n’est pas enregistrée dans le dépôt. Elle reste extractible de l’APK final, comme toute clé utilisée dans une application Android.
+
+Pour afficher les bannières TMDB, ajoute le secret GitHub Actions **TMDB_API_KEY** avec ta clé API TMDB. Pour publier une Release installable qui pourra mettre à jour la même application, configure également **GLASSTV_SIGNING_JSON** avec le fichier privé de signature. La publication attend la configuration de la signature permanente :
 
 1. Ouvrir [les secrets GitHub Actions](https://github.com/pacormn/GlassTv/settings/secrets/actions/new).
 2. Créer le secret **GLASSTV_SIGNING_JSON**, contenant tout le contenu du fichier privé GlassTV-signing-secret.txt fourni au propriétaire.
-3. Dans **Actions → Build GlassTV APK**, choisir **Run workflow** sur main.
+3. Dans **Actions → Build GlassTV APK**, choisir **Run workflow** sur main. La compilation sans TMDB_API_KEY fonctionne, mais le diaporama reste désactivé. Sans GLASSTV_SIGNING_JSON, l’APK est fourni comme artefact de diagnostic et n’est pas publié en Release.
 
 Ne jamais ajouter cette clé au dépôt. Sans ce secret, le workflow compile et teste, mais ne publie aucun APK en Release. Une ancienne installation signée avec une autre clé devra être désinstallée une fois, ce qui efface les réglages. Les versions suivantes conserveront la même signature.
 
@@ -31,7 +33,7 @@ Lecteur Media3 avec quatre sources aériennes AVC/H.264, passage à la suivante 
 
 Le centre de contrôle permet de choisir une vidéo locale ; privilégier un MP4 H.264. Le mode développeur affiche la version en bas à droite et donne accès au bouton de test de l'économiseur. Une touche quitte la vidéo sans ouvrir une application derrière.
 
-Les erreurs de certificat HTTPS sont distinguées des autres échecs. La validation TLS reste active. L'accès aux sources distantes doit encore être confirmé sur la Xiaomi : l'environnement de test intercepte HTTPS et n'a pas permis de le valider. Le décodage d'une vidéo locale H.264 a été vérifié jusqu'à la première image réellement rendue.
+Attribution TMDB dans le centre de contrôle : « This product uses the TMDB API but is not endorsed or certified by TMDB. » Les erreurs de certificat HTTPS sont distinguées des autres échecs. La validation TLS reste active. L'accès aux sources distantes doit encore être confirmé sur la Xiaomi : l'environnement de test intercepte HTTPS et n'a pas permis de le valider. Le décodage d'une vidéo locale H.264 a été vérifié jusqu'à la première image réellement rendue.
 
 ## Télécommande Xiaomi
 
@@ -58,6 +60,6 @@ La migration depuis une ancienne signature debug exige une réinstallation. La m
 
 Android 9 minimum / API 28, cible API 35, compatible Android TV 11 / API 30. Java 17, Android Gradle Plugin 8.6.1 et Gradle 8.10.2.
 
-[Validation 0.5.2 réussie](https://github.com/pacormn/GlassTv/actions/runs/42317520083) : compilation, lint, signature de l'APK de test, démarrage Android 11, décodage local H.264, sortie de l'économiseur, dernier bouton du panneau et visibilité de la sélection dans la grille. La fluidité réelle et la lecture distante restent à vérifier sur la box.
+[Validation 0.5.2](https://github.com/pacormn/GlassTv/actions/runs/42317520083) : compilation, lint, démarrage Android 11, décodage local H.264, sortie de l’économiseur, dernier bouton du panneau et visibilité de la sélection. La version 0.5.3 ajoute le diaporama TMDB ; lance le workflow après avoir ajouté le secret pour compiler l’APK avec les bannières. La fluidité réelle et la lecture distante restent à vérifier sur la box.
 
 La Release n'est publiée que si les tests réussissent et que la signature permanente est configurée. Le dépôt est public par choix du propriétaire. Aucune télémétrie ni publicité. Interface inspirée de tvOS, sans affiliation à Apple.
