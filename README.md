@@ -2,11 +2,11 @@
 
 ## Installer sur la TV
 
-### [⬇ Télécharger GlassTV 0.5.5.apk](https://github.com/pacormn/GlassTv/releases/download/v0.5.5/GlassTV-0.5.5.apk)
+### [⬇ Télécharger GlassTV 0.5.6.apk](https://github.com/pacormn/GlassTv/releases/download/v0.5.6/GlassTV-0.5.6.apk)
 
-Lien direct à ouvrir avec le navigateur de la TV ou Downloader. [Voir la Release 0.5.5](https://github.com/pacormn/GlassTv/releases/tag/v0.5.5).
+Lien direct à ouvrir avec le navigateur de la TV ou Downloader. [Voir la Release 0.5.6](https://github.com/pacormn/GlassTv/releases/tag/v0.5.6).
 
-## Version 0.5.5 publiée
+## Version 0.5.6 publiée
 
 Le diaporama TMDB affiche les films en salle et prochaines sorties. Les bannières et les logos du titre sont préchargés avant affichage ; un fondu lent évite le délai de chargement. Le titre apparaît après 3 secondes, en grand avec le logo du film si disponible, puis les genres et la durée sur une même ligne. Le salut est agrandi, les cinq favoris sont centrés et une ombre légère améliore la lisibilité du titre. La clé est stockée dans les secrets GitHub Actions, pas dans le dépôt. Comme l’application interroge TMDB directement, la clé est toutefois extractible de l’APK public.
 
@@ -15,7 +15,7 @@ Pour les prochaines compilations, les secrets **TMDB_API_KEY** et **GLASSTV_SIGN
 ## Accueil et navigation
 
 - « Bonjour Paco » entre 6 h et 18 h, puis « Bonsoir Paco », selon l'heure de la box. Le texte est placé plus haut.
-- Cinq emplacements fixes de favoris. La barre remonte en haut pendant le passage aux applications et conserve son opacité.
+- Cinq emplacements fixes de favoris. La barre défile avec les applications, sans position fixe. La bannière disparaît dans la grille.
 - Défilement animé avec déplacements de focus regroupés, sans animation concurrente du ScrollView. Marges autour de la sélection et découpage des lignes hors écran.
 - Bouton supérieur arrondi avec animation de focus et survol. Centre de contrôle inspiré du verre translucide, défilant indépendamment des applications.
 - Appui long OK sur une application : choisir l'un des cinq favoris à remplacer. Une application déjà favorite échange sa place avec celle choisie.
@@ -54,6 +54,6 @@ La migration depuis une ancienne signature debug exige une réinstallation. La m
 
 Android 9 minimum / API 28, cible API 35, compatible Android TV 11 / API 30. Java 17, Android Gradle Plugin 8.6.1 et Gradle 8.10.2.
 
-[Validation 0.5.5](https://github.com/pacormn/GlassTv/actions/runs/42367954902) : compilation, lint, injection TMDB confirmée sans afficher la clé, signature permanente, démarrage Android 11 et navigation vérifiés. La fluidité réelle et la lecture distante de l’économiseur restent à vérifier sur la box.
+[Validation 0.5.6](https://github.com/pacormn/GlassTv/actions/runs/42368619306) : compilation, lint, injection TMDB confirmée sans afficher la clé, signature permanente, démarrage Android 11 et navigation vérifiés. La fluidité réelle et la lecture distante de l’économiseur restent à vérifier sur la box.
 
 La Release n'est publiée que si les tests réussissent et que la signature permanente est configurée. Le dépôt est public par choix du propriétaire. Aucune télémétrie ni publicité. Interface inspirée de tvOS, sans affiliation à Apple.
