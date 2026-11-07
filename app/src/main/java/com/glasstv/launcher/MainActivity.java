@@ -60,6 +60,100 @@ public class MainActivity extends Activity {
     private ScrollView panelScroll;
     private final java.util.concurrent.ExecutorService images=java.util.concurrent.Executors.newSingleThreadExecutor();
     private int imageGeneration;
+    private final ArrayList<String> tmdbBackdrops = new ArrayList<>();
+    private int tmdbIndex, tmdbGeneration;
+    private final Runnable tmdbSlide = new Runnable() {
+        @Override public void run() {
+            if (!resumed) return;
+            if (prefs.getString("backdrop", "").isEmpty() && !tmdbBackdrops.isEmpty() && !appsPage) showNextTmdbBackdrop(tmdbGeneration);
+            handler.postDelayed(this, 15000);
+        }
+    };
+    private boolean hasTmdbKey() { return !BuildConfig.TMDB_API_KEY.isEmpty(); }
+    private void startTmdbSlideshow() {
+        if (!hasTmdbKey() || !prefs.getString("backdrop", "").isEmpty()) return;
+        if (!tmdbBackdrops.isEmpty()) {
+            handler.removeCallbacks(tmdbSlide);
+            showNextTmdbBackdrop(tmdbGeneration);
+            handler.postDelayed(tmdbSlide, 15000);
+            return;
+        }
+        final int generation = ++tmdbGeneration;
+        images.execute(() -> {
+            ArrayList<String> paths = new ArrayList<>();
+            for (String category : new String[]{"now_playing", "upcoming"}) {
+                java.net.HttpURLConnection connection = null;
+                try {
+                    String address = "https://api.themoviedb.org/3/movie/" + category
+                        + "?api_key=" + java.net.URLEncoder.encode(BuildConfig.TMDB_API_KEY, "UTF-8")
+                        + "&language=fr-FR&region=FR&page=1";
+                    connection = (java.net.HttpURLConnection) new java.net.URL(address).openConnection();
+                    connection.setConnectTimeout(8000);
+                    connection.setReadTimeout(10000);
+                    connection.setRequestProperty("Accept", "application/json");
+                    if (connection.getResponseCode() != 200) continue;
+                    try (java.io.InputStream input = connection.getInputStream();
+                         java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream()) {
+                        byte[] buffer = new byte[8192]; int count, total = 0;
+                        while ((count = input.read(buffer)) != -1 && total < 1_000_000) {
+                            output.write(buffer, 0, count); total += count;
+                        }
+                        org.json.JSONArray results = new org.json.JSONObject(output.toString("UTF-8")).optJSONArray("results");
+                        if (results != null) for (int i = 0; i < results.length() && paths.size() < 12; i++) {
+                            String path = results.optJSONObject(i) == null ? null : results.optJSONObject(i).optString("backdrop_path", "");
+                            if (path != null && !path.isEmpty() && !paths.contains(path)) paths.add(path);
+                        }
+                    }
+                } catch (Exception ignored) {
+                } finally { if (connection != null) connection.disconnect(); }
+            }
+            handler.post(() -> {
+                if (isDestroyed() || generation != tmdbGeneration || !prefs.getString("backdrop", "").isEmpty()) return;
+                tmdbBackdrops.clear(); tmdbBackdrops.addAll(paths); tmdbIndex = 0;
+                if (tmdbBackdrops.isEmpty()) {
+                    Toast.makeText(this, "Aucune bannière TMDB disponible pour le moment", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                showNextTmdbBackdrop(generation);
+                handler.removeCallbacks(tmdbSlide);
+                handler.postDelayed(tmdbSlide, 15000);
+            });
+        });
+    }
+    private void showNextTmdbBackdrop(int generation) {
+        if (generation != tmdbGeneration || tmdbBackdrops.isEmpty() || !prefs.getString("backdrop", "").isEmpty()) return;
+        String path = tmdbBackdrops.get(tmdbIndex++ % tmdbBackdrops.size());
+        images.execute(() -> {
+            java.net.HttpURLConnection connection = null;
+            try {
+                connection = (java.net.HttpURLConnection) new java.net.URL("https://image.tmdb.org/t/p/w1280" + path).openConnection();
+                connection.setConnectTimeout(8000); connection.setReadTimeout(12000);
+                try (java.io.InputStream input = connection.getInputStream()) {
+                    Bitmap bitmap = BitmapFactory.decodeStream(input);
+                    if (bitmap != null) handler.post(() -> {
+                        if (!isDestroyed() && generation == tmdbGeneration && prefs.getString("backdrop", "").isEmpty() && !appsPage) {
+                            backdrop.animate().cancel();
+                            backdrop.setImageBitmap(bitmap);
+                            backdrop.setAlpha(0f);
+                            backdrop.animate().alpha(.8f).setDuration(duration(700)).start();
+                        }
+                    });
+                }
+            } catch (Exception ignored) {
+            } finally { if (connection != null) connection.disconnect(); }
+        });
+    }
+    private void refreshTmdb() {
+        if (!hasTmdbKey()) {
+            new AlertDialog.Builder(this).setTitle("Bannières cinéma").setMessage("Ajoute le secret GitHub Actions TMDB_API_KEY avec ta clé TMDB, puis recompile l’APK. Le diaporama utilise les sorties en salle et prochaines sorties en France.")
+                .setPositiveButton("Compris", null).show();
+            return;
+        }
+        prefs.edit().remove("backdrop").apply();
+        tmdbBackdrops.clear(); tmdbIndex = 0; tmdbGeneration++;
+        closeControls();
+        startTmdbSlideshow();
+    }
     private void reveal(Card card) {
         if(card==null)return;
         if(pendingReveal!=null)scroll.removeCallbacks(pendingReveal);
@@ -99,7 +193,7 @@ public class MainActivity extends Activity {
         if(request==42&&result==RESULT_OK&&data!=null&&data.getData()!=null) {
             android.net.Uri uri=data.getData();
             try{getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(SecurityException ignored){}
-            prefs.edit().putString("backdrop",uri.toString()).apply();loadBackdrop(uri);
+            prefs.edit().putString("backdrop",uri.toString()).apply();tmdbGeneration++;handler.removeCallbacks(tmdbSlide);loadBackdrop(uri);
         }
     }
     private boolean backHeld;
@@ -202,11 +296,11 @@ public class MainActivity extends Activity {
         heroSubtitle.setVisibility(View.GONE);
     }
     @Override protected void onResume() {
-        super.onResume(); updates.resume();resumed=true; root.setAlpha(1f);root.setScaleX(1);root.setScaleY(1);
+        super.onResume(); updates.resume();resumed=true; root.setAlpha(1f);root.setScaleX(1);root.setScaleY(1);startTmdbSlideshow();
         if(panel!=null)closeControls();
         refreshApps(); handler.removeCallbacks(clockTick);clockTick.run();resetIdle();
     }
-    @Override protected void onPause() { super.onPause();aerial.stop();handler.removeCallbacks(idleSaver);if(pageAnimator!=null)pageAnimator.cancel();updates.pause();resumed=false;handler.removeCallbacks(clockTick);handler.removeCallbacks(holdBack);handler.removeCallbacks(singleMenu);handler.removeCallbacks(holdMenu);lastMenuUp=0;root.animate().cancel(); }
+    @Override protected void onPause() { super.onPause();aerial.stop();handler.removeCallbacks(tmdbSlide);handler.removeCallbacks(idleSaver);if(pageAnimator!=null)pageAnimator.cancel();updates.pause();resumed=false;handler.removeCallbacks(clockTick);handler.removeCallbacks(holdBack);handler.removeCallbacks(singleMenu);handler.removeCallbacks(holdMenu);lastMenuUp=0;root.animate().cancel(); }
     @Override protected void onDestroy() { if(pageAnimator!=null)pageAnimator.cancel();images.shutdownNow();updates.close();handler.removeCallbacksAndMessages(null);super.onDestroy(); }
     private void refreshApps() {
         String selected=lastFocus instanceof Card?((Card)lastFocus).app.pkg:"";
@@ -356,7 +450,8 @@ public class MainActivity extends Activity {
         control(sheet,"Économiseur auto · "+(prefs.getBoolean("saver_auto",true)?"3 minutes":"Désactivé"),()->{prefs.edit().putBoolean("saver_auto",!prefs.getBoolean("saver_auto",true)).apply();closeControls();resetIdle();});
         control(sheet,"Choisir une vidéo locale",this::chooseSaverVideo);
         control(sheet,"Source aérienne par défaut",()->{prefs.edit().remove("saver_video").apply();closeControls();});
-        control(sheet,"Bannières cinéma · Configuration",()->new AlertDialog.Builder(this).setTitle("Sorties cinéma").setMessage("Le diaporama automatique nécessite une clé API TMDB. Créez un compte sur themoviedb.org puis Paramètres → API. Aucune clé ni connexion TMDB n’est intégrée dans cette version. Vous pouvez déjà choisir une bannière locale.").setPositiveButton("Compris",null).show());
+        control(sheet,"Bannières cinéma · Actualiser",this::refreshTmdb);
+        control(sheet,"À propos des données cinéma",()->new AlertDialog.Builder(this).setTitle("Données cinéma · TMDB").setMessage("Ce produit utilise l’API TMDB mais n’est ni approuvé ni certifié par TMDB. Les bannières sont fournies par TMDB et s’actualisent depuis les sorties en salle et prochaines sorties en France.").setPositiveButton("Compris",null).show());
         control(sheet,"Choisir la bannière",this::chooseBackdrop);
         control(sheet,"Actualiser les applications",()->{closeControls();refreshApps();});
         TextView close=control(sheet,"Fermer",this::closeControls);first.setNextFocusUpId(first.getId());close.setNextFocusDownId(close.getId());
