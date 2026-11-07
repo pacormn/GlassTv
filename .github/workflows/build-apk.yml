@@ -56,6 +56,22 @@ jobs:
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: gradle :app:assembleDebug :app:lintDebug --no-daemon --stacktrace
+      - name: Verify TMDB key was injected without printing it
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: |
+          python3 - <<'PY'
+          import os,pathlib,sys
+          key=os.environ.get("TMDB_API_KEY","")
+          source=pathlib.Path("app/build/generated/source/buildConfig/debug/com/glasstv/launcher/BuildConfig.java")
+          if not key:
+              print("TMDB_API_KEY is missing from GitHub Actions secrets.")
+              sys.exit(1)
+          if not source.exists() or key not in source.read_text():
+              print("TMDB_API_KEY was not injected into BuildConfig.")
+              sys.exit(1)
+          print("TMDB_API_KEY is configured and injected. Its value is not shown.")
+          PY
       - name: Verify APK signature and Android compatibility
         run: |
           mkdir -p dist
