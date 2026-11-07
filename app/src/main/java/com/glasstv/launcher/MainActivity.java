@@ -297,8 +297,9 @@ public class MainActivity extends Activity {
             }
             pendingMovieIndex = -1;
             tmdbIndex = (index + 1) % tmdbMovies.size();
+            boolean firstFilm = activeTmdbMovie == null;
             activeTmdbMovie = movie;
-            showGreeting();
+            if (firstFilm) showGreeting();
             Drawable oldDrawable = currentTmdbBackdrop == null
                 ? new ColorDrawable(Color.TRANSPARENT)
                 : new BitmapDrawable(getResources(), currentTmdbBackdrop);
@@ -311,7 +312,7 @@ public class MainActivity extends Activity {
             transition.startTransition(duration(2500));
             currentTmdbBackdrop = movie.backdropBitmap;
             handler.removeCallbacks(filmHeroTask);
-            handler.postDelayed(filmHeroTask, duration(2500) + 3000);
+            handler.postDelayed(filmHeroTask, firstFilm ? duration(2500) + 3000 : 100);
             return;
         }
         pendingMovieIndex = -1;
@@ -320,7 +321,7 @@ public class MainActivity extends Activity {
         if (activeTmdbMovie == null || !activeTmdbMovie.artworkReady) return;
         heroTitle.animate().cancel(); heroLogo.animate().cancel(); heroSubtitle.animate().cancel();
         Runnable showNewTitle = () -> {
-            if (!showFilmHero || activeTmdbMovie == null || isDestroyed()) return;
+            if (!showFilmHero || activeTmdbMovie == null || isDestroyed() || appsPage) return;
             TmdbMovie movie = activeTmdbMovie;
             heroSubtitle.setText(movie.subtitle());
             heroSubtitle.setVisibility(View.VISIBLE); heroSubtitle.setAlpha(0f);
@@ -372,7 +373,7 @@ public class MainActivity extends Activity {
             boolean grid=gridCards.contains(card),entering=grid&&!appsPage;
             Rect bounds=new Rect();card.getDrawingRect(bounds);
             content.offsetDescendantRectToMyCoords(card,bounds);
-            int margin=px(32),dockSpace=px(300),target=pageAnimator!=null&&pageAnimator.isRunning()?pageTarget:scroll.getScrollY();
+            int margin=px(32),dockSpace=px(32),target=pageAnimator!=null&&pageAnimator.isRunning()?pageTarget:scroll.getScrollY();
             if(!grid)target=0;
             else if(entering||bounds.top-dockSpace<target)target=Math.max(0,bounds.top-dockSpace);
             else if(bounds.bottom+margin>target+scroll.getHeight())target=bounds.bottom+margin-scroll.getHeight();
@@ -425,13 +426,13 @@ public class MainActivity extends Activity {
     }
     private String greeting(){int hour=Calendar.getInstance().get(Calendar.HOUR_OF_DAY);return (hour>=6&&hour<18?"Bonjour":"Bonsoir")+" Paco";}
     private void animatePage(int target,boolean grid){
-        if(favoritesBar!=null)favoritesBar.setTranslationY(Math.max(0,scroll.getScrollY()-favoritesBar.getTop()+px(20)));
+        if(favoritesBar!=null)favoritesBar.setTranslationY(0);
         int max=Math.max(0,content.getHeight()-scroll.getHeight());
         target=Math.max(0,Math.min(target,max));
         if(animatedGrid==null||animatedGrid!=grid){
             animatedGrid=grid;heroTitle.animate().cancel();
             heroTitle.animate().alpha(grid?0:1).translationY(grid?-px(14):0).setDuration(duration(220)).start();
-            backdrop.animate().cancel();backdrop.animate().alpha(grid?.35f:.8f).setDuration(duration(300)).start();
+            backdrop.animate().cancel();backdrop.animate().alpha(grid?0f:.8f).setDuration(duration(650)).start();
             if (heroLogo != null) heroLogo.animate().alpha(grid?0:1).setDuration(duration(220)).start();
             if (heroSubtitle != null) heroSubtitle.animate().alpha(grid?0:1).setDuration(duration(220)).start();
             if (!grid) scheduleFilmHero();
@@ -478,7 +479,7 @@ public class MainActivity extends Activity {
         String saved=prefs.getString("backdrop","");if(!saved.isEmpty())loadBackdrop(android.net.Uri.parse(saved));
         buildHeader();
         scroll=new ScrollView(this){
-            @Override protected void onScrollChanged(int x,int y,int oldX,int oldY){super.onScrollChanged(x,y,oldX,oldY);if(favoritesBar!=null)favoritesBar.setTranslationY(Math.max(0,y-favoritesBar.getTop()+px(20)));}
+            @Override protected void onScrollChanged(int x,int y,int oldX,int oldY){super.onScrollChanged(x,y,oldX,oldY);if(favoritesBar!=null)favoritesBar.setTranslationY(0);}
             @Override public void requestChildFocus(View child,View focused){int y=getScrollY();super.requestChildFocus(child,focused);scrollTo(0,y);}
             @Override public boolean executeKeyEvent(KeyEvent event){return false;}
             @Override public boolean requestChildRectangleOnScreen(View child,Rect rectangle,boolean immediate){return false;}
@@ -502,7 +503,7 @@ public class MainActivity extends Activity {
         TextView button=text("☷",42,Color.WHITE);button.setGravity(Gravity.CENTER);button.setContentDescription("Centre de contrôle");
         button.setBackground(glass(0x45ffffff,0x15ffffff,33,0x66ffffff));button.setFocusable(true);button.setId(View.generateViewId());
         button.setOnClickListener(v->showControls());
-        button.setOnFocusChangeListener((v,focus)->{button.setTextColor(focus?0xff111724:Color.WHITE);button.setBackground(glass(focus?0xfff7faff:0x45ffffff,focus?0xffcbd8e9:0x15ffffff,33,0x99ffffff));v.animate().scaleX(focus?1.08f:1).scaleY(focus?1.08f:1).translationZ(px(focus?16:0)).setDuration(duration(190)).start();});
+        button.setOnFocusChangeListener((v,focus)->{button.setTextColor(focus?0xff111724:Color.WHITE);button.setBackground(glass(focus?0xfff7faff:0x45ffffff,focus?0xffdddddd:0x15ffffff,33,0x99ffffff));v.animate().scaleX(focus?1.08f:1).scaleY(focus?1.08f:1).translationZ(px(focus?16:0)).setDuration(duration(190)).start();});
         button.setOnHoverListener((v,event)->{if(event.getAction()==android.view.MotionEvent.ACTION_HOVER_ENTER)v.requestFocus();return false;});
         headerButton=button;root.addView(button,frame(100,66,Gravity.TOP,1701,48));
         heroTitle=text(greeting(),82,Color.WHITE);heroTitle.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
@@ -511,7 +512,7 @@ public class MainActivity extends Activity {
         heroLogo = new ImageView(this); heroLogo.setScaleType(ImageView.ScaleType.FIT_START); heroLogo.setVisibility(View.GONE);
         root.addView(heroLogo,frame(1300,220,Gravity.TOP,112,28));
         heroSubtitle=text("",27,0xddffffff); heroSubtitle.setShadowLayer(px(8),px(2),px(3),0xaa000000); heroSubtitle.setVisibility(View.GONE);
-        root.addView(heroSubtitle,frame(1500,44,Gravity.TOP,112,230));
+        root.addView(heroSubtitle,frame(1500,44,Gravity.TOP,112,280));
     }
     @Override protected void onResume() {
         super.onResume(); updates.resume();resumed=true; root.setAlpha(1f);root.setScaleX(1);root.setScaleY(1);startTmdbSlideshow();
@@ -554,7 +555,7 @@ public class MainActivity extends Activity {
         HorizontalScrollView favoritesScroll=new HorizontalScrollView(this);
         favoritesScroll.setHorizontalScrollBarEnabled(false);favoritesScroll.setClipToPadding(false);
         LinearLayout dock=new LinearLayout(this);dock.setGravity(Gravity.CENTER);dock.setPadding(px(30),px(25),px(30),px(15));
-        dock.setClipChildren(false);dock.setClipToPadding(false);dock.setBackground(glass(0x38dcd7f5,0x173b345a,40,0x49ffffff));
+        dock.setClipChildren(false);dock.setClipToPadding(false);dock.setBackground(glass(0x32ffffff,0x40151515,40,0x49ffffff));
         favoritesScroll.setFillViewport(true);favoritesScroll.addView(dock);favoritesBar=favoritesScroll;favoritesBar.setElevation(px(18));
         content.addView(favoritesScroll,new LinearLayout.LayoutParams(-1,px(255)));
         for(int i=0;i<favoritesList.size();i++){addCard(dock,favoritesList.get(i),i,true);dockCards.add(cards.get(cards.size()-1));}
@@ -654,7 +655,7 @@ public class MainActivity extends Activity {
         panel=new FrameLayout(this);panel.setBackgroundColor(0x66040815);root.addView(panel,new FrameLayout.LayoutParams(-1,-1));
         LinearLayout sheet=new LinearLayout(this);sheet.setOrientation(LinearLayout.VERTICAL);sheet.setPadding(px(40),px(36),px(40),px(30));sheet.setClipChildren(false);sheet.setClipToPadding(false);
         FrameLayout.LayoutParams p=frame(560,-2,Gravity.RIGHT|Gravity.TOP,0,65);p.rightMargin=px(70);p.height=getResources().getDisplayMetrics().heightPixels-px(130);
-        panelScroll=new ScrollView(this);panelScroll.setBackground(glass(0xe3596579,0xf0182235,42,0x88ffffff));panelScroll.setClipToOutline(true);panelScroll.setPadding(px(16),px(16),px(16),px(16));panelScroll.setClipToPadding(false);panelScroll.setVerticalScrollBarEnabled(false);panelScroll.addView(sheet);panel.addView(panelScroll,p);
+        panelScroll=new ScrollView(this);panelScroll.setBackground(glass(0xe3303030,0xf0101010,42,0x88ffffff));panelScroll.setClipToOutline(true);panelScroll.setPadding(px(16),px(16),px(16),px(16));panelScroll.setClipToPadding(false);panelScroll.setVerticalScrollBarEnabled(false);panelScroll.addView(sheet);panel.addView(panelScroll,p);
         TextView heading=text("Centre de contrôle",36,Color.WHITE);sheet.addView(heading,new LinearLayout.LayoutParams(-1,px(75)));
         TextView first=control(sheet,"Réglages Android TV",()->{try{startActivity(new Intent(Settings.ACTION_SETTINGS));}catch(android.content.ActivityNotFoundException e){Toast.makeText(this,"Réglages indisponibles",Toast.LENGTH_SHORT).show();}});
         control(sheet,"Ambiance  ·  "+new String[]{"Crépuscule","Océan","Minuit"}[palette],()->new AlertDialog.Builder(this).setTitle("Ambiance").setSingleChoiceItems(new String[]{"Crépuscule","Océan","Minuit"},palette,(d,which)->{palette=which;prefs.edit().putInt("palette",which).apply();wallpaper.reset();d.dismiss();closeControls();}).show());
@@ -681,7 +682,7 @@ public class MainActivity extends Activity {
     private TextView control(LinearLayout parent,String title,Runnable action) {
         TextView v=text(title,27,Color.WHITE);v.setId(View.generateViewId());v.setNextFocusLeftId(v.getId());v.setNextFocusRightId(v.getId());v.setGravity(Gravity.CENTER_VERTICAL);v.setPadding(px(24),0,px(18),0);v.setFocusable(true);v.setClickable(true);
         v.setBackground(glass(0x30ffffff,0x12ffffff,23,0x3affffff));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,px(78));p.bottomMargin=px(13);parent.addView(v,p);
-        panelButtons.add(v);v.setOnFocusChangeListener((view,focus)->{if(focus&&panelScroll!=null)v.post(()->{Rect r=new Rect();v.getDrawingRect(r);r.inset(-px(12),-px(14));v.requestRectangleOnScreen(r,false);});v.setTextColor(focus?0xff151520:Color.WHITE);v.setBackground(glass(focus?0xfff6faff:0x30ffffff,focus?0xffd5e3f1:0x12ffffff,23,0x77ffffff));v.animate().scaleX(focus?1.025f:1).scaleY(focus?1.025f:1).setDuration(duration(160)).start();});v.setOnClickListener(view->action.run());return v;
+        panelButtons.add(v);v.setOnFocusChangeListener((view,focus)->{if(focus&&panelScroll!=null)v.post(()->{Rect r=new Rect();v.getDrawingRect(r);r.inset(-px(12),-px(14));v.requestRectangleOnScreen(r,false);});v.setTextColor(focus?0xff151520:Color.WHITE);v.setBackground(glass(focus?0xfff6faff:0x30ffffff,focus?0xffdddddd:0x12ffffff,23,0x77ffffff));v.animate().scaleX(focus?1.025f:1).scaleY(focus?1.025f:1).setDuration(duration(160)).start();});v.setOnClickListener(view->action.run());return v;
     }
     private void closeControls(){if(panel==null)return;root.removeView(panel);panel=null;scroll.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);headerButton.setFocusable(true);if(lastFocus!=null)lastFocus.requestFocus();}
     @Override public void onBackPressed(){if(panel!=null)closeControls();else if(!cards.isEmpty()){appsPage=false;animatePage(0,false);cards.get(0).requestFocus();}}
@@ -763,10 +764,10 @@ public class MainActivity extends Activity {
         final Paint paint=new Paint(3);final Path wave=new Path();Shader base,glow,shade;
         Wallpaper(){super(MainActivity.this);setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);}
         void reset(){makeShaders(getWidth(),getHeight());invalidate();}
-        void makeShaders(int w,int h){if(w==0||h==0)return;int[][] colors={{0xff14182d,0xff3e365c,0xff90788c},{0xff071d2d,0xff164958,0xff497c87},{0xff030711,0xff121c36,0xff313353}};int[] a=colors[palette];base=new LinearGradient(0,0,w,h,a,null,Shader.TileMode.CLAMP);glow=new RadialGradient(w*.73f,h*.22f,w*.65f,new int[]{palette==1?0x7869c3ce:0x789e8aba,0x00513a78},null,Shader.TileMode.CLAMP);shade=new LinearGradient(0,0,0,h,new int[]{0x11000000,0x00000000,0xaa050914},new float[]{0,.35f,1},Shader.TileMode.CLAMP);}
+        void makeShaders(int w,int h){if(w==0||h==0)return;int[][] colors={{0xff090909,0xff202020,0xff383838},{0xff111110,0xff292824,0xff48443c},{0xff030303,0xff101010,0xff202020}};int[] a=colors[palette];base=new LinearGradient(0,0,w,h,a,null,Shader.TileMode.CLAMP);glow=new RadialGradient(w*.73f,h*.22f,w*.65f,new int[]{0x304a4a4a,0x00404040},null,Shader.TileMode.CLAMP);shade=new LinearGradient(0,0,0,h,new int[]{0x11000000,0x00000000,0xaa050914},new float[]{0,.35f,1},Shader.TileMode.CLAMP);}
         @Override protected void onSizeChanged(int w,int h,int ow,int oh){makeShaders(w,h);}
         @Override protected void onDraw(Canvas c){float w=getWidth(),h=getHeight();paint.setShader(base);c.drawRect(0,0,w,h,paint);paint.setShader(glow);c.drawRect(0,0,w,h,paint);paint.setShader(null);
-            for(int i=0;i<3;i++){wave.reset();wave.moveTo(-w*.1f,h*(.7f+i*.1f));wave.cubicTo(w*.25f,h*(.2f+i*.12f),w*.65f,h*(1.1f-i*.1f),w*1.1f,h*(.25f+i*.18f));wave.lineTo(w*1.1f,h*1.2f);wave.lineTo(-w*.1f,h*1.2f);wave.close();paint.setColor(new int[]{0x283d315b,0x30463865,0x440a1027}[i]);c.drawPath(wave,paint);}
+            for(int i=0;i<3;i++){wave.reset();wave.moveTo(-w*.1f,h*(.7f+i*.1f));wave.cubicTo(w*.25f,h*(.2f+i*.12f),w*.65f,h*(1.1f-i*.1f),w*1.1f,h*(.25f+i*.18f));wave.lineTo(w*1.1f,h*1.2f);wave.lineTo(-w*.1f,h*1.2f);wave.close();paint.setColor(new int[]{0x18181818,0x20202020,0x44080808}[i]);c.drawPath(wave,paint);}
             paint.setShader(shade);c.drawRect(0,0,w,h,paint);paint.setShader(null);
         }
     }
