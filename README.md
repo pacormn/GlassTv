@@ -2,15 +2,19 @@
 
 ## Installer sur la TV
 
-### [⬇ Télécharger GlassTV 0.5.6.apk](https://github.com/pacormn/GlassTv/releases/download/v0.5.6/GlassTV-0.5.6.apk)
+### [⬇ Télécharger GlassTV 0.5.7.apk](https://github.com/pacormn/GlassTv/releases/download/v0.5.7/GlassTV-0.5.7.apk)
 
-Lien direct à ouvrir avec le navigateur de la TV ou Downloader. [Voir la Release 0.5.6](https://github.com/pacormn/GlassTv/releases/tag/v0.5.6).
+Lien direct à ouvrir avec le navigateur de la TV ou Downloader. [Voir la Release 0.5.7](https://github.com/pacormn/GlassTv/releases/tag/v0.5.7).
 
-## Version 0.5.6 publiée
+## Version 0.5.7 publiée
 
-Le diaporama TMDB affiche les films en salle et prochaines sorties. Les bannières et les logos du titre sont préchargés avant affichage ; un fondu lent évite le délai de chargement. Le titre apparaît après 3 secondes, en grand avec le logo du film si disponible, puis les genres et la durée sur une même ligne. Le salut est agrandi, les cinq favoris sont centrés et une ombre légère améliore la lisibilité du titre. La clé est stockée dans les secrets GitHub Actions, pas dans le dépôt. Comme l’application interroge TMDB directement, la clé est toutefois extractible de l’APK public.
+Le diaporama TMDB affiche les films en salle et prochaines sorties. Les bannières et les logos du titre sont préchargés avant affichage ; un fondu lent évite le délai de chargement. Le titre apparaît après 3 secondes, en grand avec le logo du film si disponible, puis les genres et la durée sur une même ligne. Le salut est agrandi, les cinq favoris sont centrés et une ombre légère améliore la lisibilité du titre. La clé TMDB n’est plus incluse dans l’APK. Elle est enregistrée dans les données privées de la box, sans sauvegarde Android.
 
-Pour les prochaines compilations, les secrets **TMDB_API_KEY** et **GLASSTV_SIGNING_JSON** doivent rester configurés dans [GitHub Actions](https://github.com/pacormn/GlassTv/settings/secrets/actions). Lancer ensuite **Actions → Build GlassTV APK → Run workflow**. Conserver la même clé de signature pour installer les mises à jour sans désinstaller GlassTV. La migration depuis les premières versions signées en debug a nécessité une dernière désinstallation, qui efface les réglages.
+Ouvrir **Centre de contrôle → Configurer TMDB · Téléphone**, scanner le QR code avec l’iPhone connecté au même réseau, puis coller la clé API TMDB v3. Le formulaire local HTTP reste accessible cinq minutes ou jusqu’à fermeture de l’écran. Utiliser son réseau de confiance. Une seule saisie suffit : les mises à jour conservent la clé. Le QR code est généré sur la box, sans service externe. La clé n’est jamais affichée par la page, renvoyée au téléphone ou ajoutée aux journaux. La validation vérifie son format ; une clé révoquée ne fournira pas de films.
+
+Les anciennes versions publiques contenaient la clé TMDB : la remplacer côté TMDB avant de saisir la nouvelle clé sur la box.
+
+Pour compiler, conserver uniquement **GLASSTV_SIGNING_JSON** dans les secrets GitHub Actions. Le secret TMDB_API_KEY n’est plus lu. Lancer **Actions → Build GlassTV APK → Run workflow**. Conserver la même clé de signature et installer par-dessus la version existante sans désinstaller pour garder les réglages.
 
 ## Accueil et navigation
 
@@ -54,6 +58,6 @@ La migration depuis une ancienne signature debug exige une réinstallation. La m
 
 Android 9 minimum / API 28, cible API 35, compatible Android TV 11 / API 30. Java 17, Android Gradle Plugin 8.6.1 et Gradle 8.10.2.
 
-[Validation 0.5.6](https://github.com/pacormn/GlassTv/actions/runs/42368619306) : compilation, lint, injection TMDB confirmée sans afficher la clé, signature permanente, démarrage Android 11 et navigation vérifiés. La fluidité réelle et la lecture distante de l’économiseur restent à vérifier sur la box.
+[Validation 0.5.7](https://github.com/pacormn/GlassTv/actions/runs/42385260959) : compilation, lint, signature permanente, démarrage Android 11, navigation et configuration locale depuis un client HTTP. Le test utilise une clé factice, jamais une clé réelle. La fluidité réelle et la lecture distante de l’économiseur restent à vérifier sur la box.
 
 La Release n'est publiée que si les tests réussissent et que la signature permanente est configurée. Le dépôt est public par choix du propriétaire. Aucune télémétrie ni publicité. Interface inspirée de tvOS, sans affiliation à Apple.
