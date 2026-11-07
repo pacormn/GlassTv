@@ -173,7 +173,7 @@ public class MainActivity extends Activity {
             @Override public void requestChildFocus(View child,View focused){int y=getScrollY();super.requestChildFocus(child,focused);scrollTo(0,y);}
             @Override public boolean executeKeyEvent(KeyEvent event){return false;}
             @Override public boolean requestChildRectangleOnScreen(View child,Rect rectangle,boolean immediate){return false;}
-        }; scroll.setClipChildren(false); scroll.setClipToPadding(false);
+        }; scroll.setClipChildren(true); scroll.setClipToPadding(true);
         scroll.setVerticalScrollBarEnabled(false); scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
         scroll.setFillViewport(false); scroll.setSmoothScrollingEnabled(true);
         content=new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL);
