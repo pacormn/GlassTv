@@ -474,7 +474,16 @@ public class MainActivity extends Activity {
         wallpaper=new Wallpaper(); wallpaper.setScaleX(1.06f);wallpaper.setScaleY(1.06f);root.addView(wallpaper,new FrameLayout.LayoutParams(-1,-1));
         backdrop=new ImageView(this);backdrop.setScaleType(ImageView.ScaleType.CENTER_CROP);root.addView(backdrop,new FrameLayout.LayoutParams(-1,-1));
         View veil=new View(this);veil.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{0x33000000,0x11000000,0xee060914}));root.addView(veil,new FrameLayout.LayoutParams(-1,-1));
-        heroShade=new View(this);heroShade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{0x50000000,0x27000000,0x00000000}));
+        heroShade=new View(this) {
+            final Paint shadePaint=new Paint(Paint.ANTI_ALIAS_FLAG);
+            @Override protected void onSizeChanged(int w,int h,int oldW,int oldH) {
+                if(w==0||h==0)return;
+                Shader horizontal=new LinearGradient(0,0,w,0,new int[]{0x00000000,0x50000000,0x35000000,0x00000000},new float[]{0,.08f,.5f,1},Shader.TileMode.CLAMP);
+                Shader vertical=new LinearGradient(0,0,0,h,new int[]{0x00ffffff,0xffffffff,0x70ffffff,0x00ffffff},new float[]{0,.12f,.6f,1},Shader.TileMode.CLAMP);
+                shadePaint.setShader(new ComposeShader(horizontal,vertical,PorterDuff.Mode.DST_IN));
+            }
+            @Override protected void onDraw(Canvas canvas) { canvas.drawRect(0,0,getWidth(),getHeight(),shadePaint); }
+        };
         root.addView(heroShade,frame(1500,300,Gravity.TOP,40,10));
         String saved=prefs.getString("backdrop","");if(!saved.isEmpty())loadBackdrop(android.net.Uri.parse(saved));
         buildHeader();
@@ -489,8 +498,7 @@ public class MainActivity extends Activity {
         content=new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL);
         content.setClipChildren(false); content.setClipToPadding(false); content.setPadding(px(110),px(575),px(110),px(100));
         scroll.addView(content); FrameLayout.LayoutParams sp=frame(-1,-1,Gravity.TOP,0,145);sp.bottomMargin=px(70);root.addView(scroll,sp);
-        controls=text("OK  Ouvrir     •     Maintenir OK  Organiser     •     Maintenir Retour  Réglages",21,0x99ffffff);
-        FrameLayout.LayoutParams cp=frame(-2,30,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL,0,0);cp.bottomMargin=px(27);root.addView(controls,cp);
+
         developerBadge=text("v"+appVersion(),18,0xbfffffff);developerBadge.setPadding(px(12),px(6),px(12),px(6));
         developerBadge.setBackground(glass(0x66000000,0x44000000,10,0x11ffffff));developerBadge.setVisibility(prefs.getBoolean("developer",false)?View.VISIBLE:View.GONE);
         FrameLayout.LayoutParams badge=frame(-2,-2,Gravity.BOTTOM|Gravity.RIGHT,0,0);badge.rightMargin=px(32);badge.bottomMargin=px(22);root.addView(developerBadge,badge);
