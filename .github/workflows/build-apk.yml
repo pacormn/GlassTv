@@ -102,9 +102,8 @@ jobs:
             adb shell wm size 1920x1080
             adb shell wm density 320
             adb install dist/GlassTV-0.5.2.apk
-            adb shell mkdir -p /sdcard/Android/data/com.glasstv.launcher/files
-            adb push /tmp/glasstv-playback.mp4 /sdcard/Android/data/com.glasstv.launcher/files/playback-test.mp4
-            printf '<map><string name="saver_video">file:///sdcard/Android/data/com.glasstv.launcher/files/playback-test.mp4</string></map>' | adb shell 'run-as com.glasstv.launcher sh -c "mkdir -p shared_prefs; cat > shared_prefs/appearance.xml"'
+            cat /tmp/glasstv-playback.mp4 | adb shell 'run-as com.glasstv.launcher sh -c "mkdir -p files; cat > files/playback-test.mp4"'
+            printf '<map><string name="saver_video">file:///data/user/0/com.glasstv.launcher/files/playback-test.mp4</string></map>' | adb shell 'run-as com.glasstv.launcher sh -c "mkdir -p shared_prefs; cat > shared_prefs/appearance.xml"'
             adb shell am start -W -n com.glasstv.launcher/.MainActivity
             sleep 3
             mkdir -p screenshots
