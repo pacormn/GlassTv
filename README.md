@@ -2,21 +2,15 @@
 
 ## Installer sur la TV
 
-### [⬇ Télécharger la dernière version publiée](https://github.com/pacormn/GlassTv/releases/latest)
+### [⬇ Télécharger GlassTV 0.5.3.apk](https://github.com/pacormn/GlassTv/releases/download/v0.5.3/GlassTV-0.5.3.apk)
 
-Dans la Release, ouvrir **Assets**, puis le fichier APK avec le navigateur de la TV ou Downloader.
+Lien direct à ouvrir avec le navigateur de la TV ou Downloader. [Voir la Release 0.5.3](https://github.com/pacormn/GlassTv/releases/tag/v0.5.3).
 
-## Version 0.5.3 préparée
+## Version 0.5.3 publiée
 
-Le code est compilé et testé. Le diaporama interroge TMDB en français pour les films en salle et les prochaines sorties en France ; les bannières changent automatiquement toutes les 15 secondes. La clé est injectée au moment de la compilation et n’est pas enregistrée dans le dépôt. Elle reste extractible de l’APK final, comme toute clé utilisée dans une application Android.
+Le diaporama utilise TMDB en français pour les films en salle et les prochaines sorties en France ; les bannières changent automatiquement toutes les 15 secondes. La clé est stockée dans les secrets GitHub Actions, pas dans le dépôt. Comme l’application interroge TMDB directement, la clé est toutefois extractible de l’APK public.
 
-Pour afficher les bannières TMDB, ajoute le secret GitHub Actions **TMDB_API_KEY** avec ta clé API TMDB. Pour publier une Release installable qui pourra mettre à jour la même application, configure également **GLASSTV_SIGNING_JSON** avec le fichier privé de signature. La publication attend la configuration de la signature permanente :
-
-1. Ouvrir [les secrets GitHub Actions](https://github.com/pacormn/GlassTv/settings/secrets/actions/new).
-2. Créer le secret **GLASSTV_SIGNING_JSON**, contenant tout le contenu du fichier privé GlassTV-signing-secret.txt fourni au propriétaire.
-3. Dans **Actions → Build GlassTV APK**, choisir **Run workflow** sur main. La compilation sans TMDB_API_KEY fonctionne, mais le diaporama reste désactivé. Sans GLASSTV_SIGNING_JSON, l’APK est fourni comme artefact de diagnostic et n’est pas publié en Release.
-
-Ne jamais ajouter cette clé au dépôt. Sans ce secret, le workflow compile et teste, mais ne publie aucun APK en Release. Une ancienne installation signée avec une autre clé devra être désinstallée une fois, ce qui efface les réglages. Les versions suivantes conserveront la même signature.
+Pour les prochaines compilations, les secrets **TMDB_API_KEY** et **GLASSTV_SIGNING_JSON** doivent rester configurés dans [GitHub Actions](https://github.com/pacormn/GlassTv/settings/secrets/actions). Lancer ensuite **Actions → Build GlassTV APK → Run workflow**. Conserver la même clé de signature pour installer les mises à jour sans désinstaller GlassTV. La migration depuis les premières versions signées en debug a nécessité une dernière désinstallation, qui efface les réglages.
 
 ## Accueil et navigation
 
@@ -25,7 +19,7 @@ Ne jamais ajouter cette clé au dépôt. Sans ce secret, le workflow compile et 
 - Défilement animé avec déplacements de focus regroupés, sans animation concurrente du ScrollView. Marges autour de la sélection et découpage des lignes hors écran.
 - Bouton supérieur arrondi avec animation de focus et survol. Centre de contrôle inspiré du verre translucide, défilant indépendamment des applications.
 - Appui long OK sur une application : choisir l'un des cinq favoris à remplacer. Une application déjà favorite échange sa place avec celle choisie.
-- Bannière personnalisable via le sélecteur Android. Le diaporama des dernières sorties cinéma et l'historique vidéo ne sont pas connectés.
+- Diaporama TMDB des films en salle et prochaines sorties en France, avec possibilité de choisir une bannière locale. L’historique des vidéos regardées n’est pas connecté.
 
 ## Économiseur vidéo
 
@@ -60,6 +54,6 @@ La migration depuis une ancienne signature debug exige une réinstallation. La m
 
 Android 9 minimum / API 28, cible API 35, compatible Android TV 11 / API 30. Java 17, Android Gradle Plugin 8.6.1 et Gradle 8.10.2.
 
-[Validation 0.5.2](https://github.com/pacormn/GlassTv/actions/runs/42317520083) : compilation, lint, démarrage Android 11, décodage local H.264, sortie de l’économiseur, dernier bouton du panneau et visibilité de la sélection. La version 0.5.3 ajoute le diaporama TMDB ; lance le workflow après avoir ajouté le secret pour compiler l’APK avec les bannières. La fluidité réelle et la lecture distante restent à vérifier sur la box.
+[Validation 0.5.3](https://github.com/pacormn/GlassTv/actions/runs/42365904187) : compilation, lint, injection TMDB confirmée sans afficher la clé, signature permanente, démarrage Android 11 et navigation vérifiés. La fluidité réelle et la lecture distante de l’économiseur restent à vérifier sur la box.
 
 La Release n'est publiée que si les tests réussissent et que la signature permanente est configurée. Le dépôt est public par choix du propriétaire. Aucune télémétrie ni publicité. Interface inspirée de tvOS, sans affiliation à Apple.
