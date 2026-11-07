@@ -53,11 +53,13 @@ jobs:
               with open(os.environ["GITHUB_OUTPUT"],"a") as f: f.write("stable=true\n")
           PY
       - name: Compile APK and run Android lint
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: gradle :app:assembleDebug :app:lintDebug --no-daemon --stacktrace
       - name: Verify APK signature and Android compatibility
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.5.2.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.5.3.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose dist/*.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/*.apk | tee dist/apk-info.txt
           grep -q "sdkVersion:'28'" dist/apk-info.txt
@@ -101,7 +103,7 @@ jobs:
           script: |
             adb shell wm size 1920x1080
             adb shell wm density 320
-            adb install dist/GlassTV-0.5.2.apk
+            adb install dist/GlassTV-0.5.3.apk
             cat /tmp/glasstv-playback.mp4 | adb shell 'run-as com.glasstv.launcher sh -c "mkdir -p files; cat > files/playback-test.mp4"'
             printf '<map><string name="saver_video">file:///data/user/0/com.glasstv.launcher/files/playback-test.mp4</string></map>' | adb shell 'run-as com.glasstv.launcher sh -c "mkdir -p shared_prefs; cat > shared_prefs/appearance.xml"'
             adb shell am start -W -n com.glasstv.launcher/.MainActivity
@@ -167,14 +169,14 @@ jobs:
           path: dist
       - name: Publish installable preview APK
         run: |
-          if gh release view v0.5.2 >/dev/null 2>&1; then exit 0; fi
+          if gh release view v0.5.3 >/dev/null 2>&1; then exit 0; fi
           cat > notes.md <<'NOTES'
-          Mode développeur : version en bas à droite et bouton de test de l’économiseur. Lecteur aérien silencieux après 3 minutes dans GlassTV, source distante ou vidéo locale. Bannières TMDB non connectées : clé utilisateur encore nécessaire.
+          Mode développeur : version en bas à droite et bouton de test de l’économiseur. Lecteur aérien silencieux après 3 minutes dans GlassTV, source distante ou vidéo locale. Bannières cinéma TMDB : sorties en salle et prochaines sorties en France.
           Trois ambiances et option animations réduites.
           APK de test pour Android TV 11, compilé et testé sur émulateur API 30.
-          Installer GlassTV-0.5.2.apk. Migration vers la signature permanente : désinstaller une dernière fois les anciennes versions debug, puis installer celle-ci. Les réglages sont perdus à la désinstallation. Conserver la même clé GitHub pour les prochaines versions.
+          Installer GlassTV-0.5.3.apk. Migration vers la signature permanente : désinstaller une dernière fois les anciennes versions debug, puis installer celle-ci. Les réglages sont perdus à la désinstallation. Conserver la même clé GitHub pour les prochaines versions.
           Mises à jour avec téléchargement automatique et confirmation Android. Signature permanente fournie par le secret GitHub GLASSTV_SIGNING_JSON.
           NOTES
-          gh release create v0.5.2 dist/GlassTV-0.5.2.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.5.2 — Nouvelle interface TV" --notes-file notes.md --prerelease
+          gh release create v0.5.3 dist/GlassTV-0.5.3.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.5.3 — Nouvelle interface TV" --notes-file notes.md --prerelease
 
 
