@@ -2,11 +2,11 @@
 
 ## Installer sur la TV
 
-### [⬇ Télécharger GlassTV 0.5.8.apk](https://github.com/pacormn/GlassTv/releases/download/v0.5.8/GlassTV-0.5.8.apk)
+### [⬇ Télécharger GlassTV 0.5.9.apk](https://github.com/pacormn/GlassTv/releases/download/v0.5.9/GlassTV-0.5.9.apk)
 
-Lien direct à ouvrir avec le navigateur de la TV ou Downloader. [Voir la Release 0.5.8](https://github.com/pacormn/GlassTv/releases/tag/v0.5.8).
+Lien direct à ouvrir avec le navigateur de la TV ou Downloader. [Voir la Release 0.5.9](https://github.com/pacormn/GlassTv/releases/tag/v0.5.9).
 
-## Version 0.5.8 publiée
+## Version 0.5.9 publiée
 
 Le diaporama TMDB affiche les films en salle et prochaines sorties. Les bannières et les logos du titre sont préchargés avant affichage ; un fondu lent évite le délai de chargement. Le titre apparaît après 3 secondes, en grand avec le logo du film si disponible, puis les genres et la durée sur une même ligne. Le salut est agrandi, les cinq favoris sont centrés et une ombre légère améliore la lisibilité du titre. La clé TMDB n’est plus incluse dans l’APK. Elle est enregistrée dans les données privées de la box, sans sauvegarde Android.
 
@@ -27,11 +27,11 @@ Pour compiler, conserver uniquement **GLASSTV_SIGNING_JSON** dans les secrets Gi
 
 ## Économiseur vidéo
 
-Lecteur Media3 avec quatre sources aériennes AVC/H.264, passage à la suivante en cas d'échec, délai d'attente limité et cache disque plafonné à 256 Mo. Ce cache ne garantit pas la disponibilité hors ligne de toutes les vidéos.
+Lecteur Media3 avec quatre vidéos aériennes H.264 1080p de [RobinFrcd / AerialShots](https://github.com/RobinFrcd/AerialShots) : Cap Méchant, Grand Étang, Mafate et Mont Blanc. Les vidéos sont lues depuis les Releases HTTPS de leur auteur, en remplacement du serveur Apple qui échouait sur la box. Passage à la suivante en cas d'échec, délai d'attente limité et cache disque plafonné à 256 Mo. Ce cache ne garantit pas la disponibilité hors ligne de toutes les vidéos.
 
 Le centre de contrôle permet de choisir une vidéo locale ; privilégier un MP4 H.264. Le mode développeur affiche la version en bas à droite et donne accès au bouton de test de l'économiseur. Une touche quitte la vidéo sans ouvrir une application derrière.
 
-Attribution TMDB dans le centre de contrôle : « This product uses the TMDB API but is not endorsed or certified by TMDB. » Les erreurs de certificat HTTPS sont distinguées des autres échecs. La validation TLS reste active. L'accès aux sources distantes doit encore être confirmé sur la Xiaomi : l'environnement de test intercepte HTTPS et n'a pas permis de le valider. Le décodage d'une vidéo locale H.264 a été vérifié jusqu'à la première image réellement rendue.
+Attribution TMDB dans le centre de contrôle : « This product uses the TMDB API but is not endorsed or certified by TMDB. » Les erreurs de certificat HTTPS sont distinguées des autres échecs. La validation TLS reste active. La lecture d’une nouvelle source distante HTTPS a été vérifiée jusqu’à la première image réellement rendue sur émulateur Android 11, en plus du fichier local H.264. Le résultat sur la Xiaomi physique reste à confirmer. Aucun certificat n’est ignoré ; HTTPS reste obligatoire.
 
 ## Télécommande Xiaomi
 
@@ -58,6 +58,6 @@ La migration depuis une ancienne signature debug exige une réinstallation. La m
 
 Android 9 minimum / API 28, cible API 35, compatible Android TV 11 / API 30. Java 17, Android Gradle Plugin 8.6.1 et Gradle 8.10.2.
 
-[Validation 0.5.8](https://github.com/pacormn/GlassTv/actions/runs/42430637760) : compilation, lint, signature permanente, démarrage Android 11, navigation et configuration locale, avec test du formulaire dans WebKit (clé invalide, enregistrement sans navigation, confirmation après rechargement et conservation après redémarrage). Le test WebKit utilise un relais local vers l’émulateur ; Safari sur l’iPhone physique reste à confirmer. Le test utilise une clé factice, jamais une clé réelle. La fluidité réelle et la lecture distante de l’économiseur restent à vérifier sur la box.
+[Validation 0.5.9](https://github.com/pacormn/GlassTv/actions/runs/42500359304) : compilation, lint, signature permanente, démarrage Android 11, navigation et configuration locale, avec test du formulaire dans WebKit (clé invalide, enregistrement sans navigation, confirmation après rechargement et conservation après redémarrage). Le test WebKit utilise un relais local vers l’émulateur ; Safari sur l’iPhone physique reste à confirmer. Le test utilise une clé factice, jamais une clé réelle. La lecture distante de l’économiseur passe désormais dans ce workflow : première image HTTPS requise avant publication. La fluidité et le fonctionnement sur la box physique restent à confirmer.
 
 La Release n'est publiée que si les tests réussissent et que la signature permanente est configurée. Le dépôt est public par choix du propriétaire. Aucune télémétrie ni publicité. Interface inspirée de tvOS, sans affiliation à Apple.
