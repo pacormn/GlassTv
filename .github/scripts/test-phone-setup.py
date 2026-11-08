@@ -24,8 +24,52 @@ assert request(path="/wrong")[0] == 404
 assert request("POST", b"key=bad")[0] == 400
 dummy = "0" * 32
 assert request("POST", ("key="+dummy).encode(), origin="http://untrusted.example")[0] == 403
-status, body = request("POST", ("key="+dummy).encode())
+# Exercise the actual form script in WebKit, not just a synthetic POST.
+# The runner relays to the emulator LAN address over ADB; production has no relay.
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import threading
+from playwright.sync_api import sync_playwright
+class Relay(BaseHTTPRequestHandler):
+    def log_message(self, *args): pass
+    def do_GET(self): self.forward()
+    def do_POST(self): self.forward()
+    def forward(self):
+        payload = self.rfile.read(int(self.headers.get("Content-Length", "0"))) if self.command == "POST" else None
+        code, body = request(self.command, payload, path=self.path)
+        data = body.encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        # Preserve the production CSP for the nonce-bearing script.
+        nonce = re.search(r"<script nonce='([^']+)'", body)
+        script = (" 'nonce-" + nonce.group(1) + "'") if nonce else " 'none'"
+        self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src" + script + "; connect-src 'self'; form-action 'self'; frame-ancestors 'none'")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+relay = ThreadingHTTPServer(("127.0.0.1", 0), Relay)
+threading.Thread(target=relay.serve_forever, daemon=True).start()
+try:
+    with sync_playwright() as pw:
+        browser = pw.webkit.launch()
+        page = browser.new_page()
+        local_url = "http://127.0.0.1:" + str(relay.server_port) + parsed.path
+        page.goto(local_url)
+        page.locator("input[name=key]").fill("bad")
+        page.get_by_role("button", name="Enregistrer sur la TV").click()
+        page.get_by_role("status").filter(has_text="Clé invalide").wait_for()
+        page.locator("input[name=key]").fill(dummy)
+        page.get_by_role("button", name="Enregistrer sur la TV").click()
+        page.get_by_role("status").filter(has_text="Clé enregistrée sur la TV").wait_for(timeout=20000)
+        assert page.url == local_url
+        page.reload()
+        page.get_by_role("heading", name="Clé enregistrée sur la TV").wait_for()
+        page.screenshot(path="screenshots/phone-confirmation-webkit.png")
+        browser.close()
+finally:
+    relay.shutdown()
+status, body = request("POST", ("key=" + "1"*32).encode())
 assert status == 200 and dummy not in body
+assert "Clé enregistrée" in request()[1]
 stored = adb("shell", "run-as", "com.glasstv.launcher", "cat", "shared_prefs/tmdb_private.xml")
 assert dummy in stored
 adb("shell", "am", "force-stop", "com.glasstv.launcher")
