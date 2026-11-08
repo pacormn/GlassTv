@@ -2,15 +2,15 @@
 
 ## Installer sur la TV
 
-### [⬇ Télécharger GlassTV 0.5.7.apk](https://github.com/pacormn/GlassTv/releases/download/v0.5.7/GlassTV-0.5.7.apk)
+### [⬇ Télécharger GlassTV 0.5.8.apk](https://github.com/pacormn/GlassTv/releases/download/v0.5.8/GlassTV-0.5.8.apk)
 
-Lien direct à ouvrir avec le navigateur de la TV ou Downloader. [Voir la Release 0.5.7](https://github.com/pacormn/GlassTv/releases/tag/v0.5.7).
+Lien direct à ouvrir avec le navigateur de la TV ou Downloader. [Voir la Release 0.5.8](https://github.com/pacormn/GlassTv/releases/tag/v0.5.8).
 
-## Version 0.5.7 publiée
+## Version 0.5.8 publiée
 
 Le diaporama TMDB affiche les films en salle et prochaines sorties. Les bannières et les logos du titre sont préchargés avant affichage ; un fondu lent évite le délai de chargement. Le titre apparaît après 3 secondes, en grand avec le logo du film si disponible, puis les genres et la durée sur une même ligne. Le salut est agrandi, les cinq favoris sont centrés et une ombre légère améliore la lisibilité du titre. La clé TMDB n’est plus incluse dans l’APK. Elle est enregistrée dans les données privées de la box, sans sauvegarde Android.
 
-Ouvrir **Centre de contrôle → Configurer TMDB · Téléphone**, scanner le QR code avec l’iPhone connecté au même réseau, puis coller la clé API TMDB v3. Le formulaire local HTTP reste accessible cinq minutes ou jusqu’à fermeture de l’écran. Utiliser son réseau de confiance. Une seule saisie suffit : les mises à jour conservent la clé. Le QR code est généré sur la box, sans service externe. La clé n’est jamais affichée par la page, renvoyée au téléphone ou ajoutée aux journaux. La validation vérifie son format ; une clé révoquée ne fournira pas de films.
+Ouvrir **Centre de contrôle → Configurer TMDB · Téléphone**, scanner le QR code avec l’iPhone connecté au même réseau, puis coller la clé API TMDB v3. Le formulaire local HTTP reste accessible cinq minutes ou jusqu’à fermeture de l’écran. Utiliser son réseau de confiance. Après validation, attendre « Clé enregistrée » sur le téléphone, puis fermer le QR code sur la TV. Le formulaire reste sur la même page et affiche les erreurs de connexion ; la confirmation reste consultable jusqu’à la fermeture ou l’expiration du lien. Une seule saisie suffit : les mises à jour conservent la clé. Le QR code est généré sur la box, sans service externe. La clé n’est jamais affichée par la page, renvoyée au téléphone ou ajoutée aux journaux. La validation vérifie son format ; une clé révoquée ne fournira pas de films.
 
 Les anciennes versions publiques contenaient la clé TMDB : la remplacer côté TMDB avant de saisir la nouvelle clé sur la box.
 
@@ -58,6 +58,6 @@ La migration depuis une ancienne signature debug exige une réinstallation. La m
 
 Android 9 minimum / API 28, cible API 35, compatible Android TV 11 / API 30. Java 17, Android Gradle Plugin 8.6.1 et Gradle 8.10.2.
 
-[Validation 0.5.7](https://github.com/pacormn/GlassTv/actions/runs/42385260959) : compilation, lint, signature permanente, démarrage Android 11, navigation et configuration locale depuis un client HTTP. Le test utilise une clé factice, jamais une clé réelle. La fluidité réelle et la lecture distante de l’économiseur restent à vérifier sur la box.
+[Validation 0.5.8](https://github.com/pacormn/GlassTv/actions/runs/42430637760) : compilation, lint, signature permanente, démarrage Android 11, navigation et configuration locale, avec test du formulaire dans WebKit (clé invalide, enregistrement sans navigation, confirmation après rechargement et conservation après redémarrage). Le test WebKit utilise un relais local vers l’émulateur ; Safari sur l’iPhone physique reste à confirmer. Le test utilise une clé factice, jamais une clé réelle. La fluidité réelle et la lecture distante de l’économiseur restent à vérifier sur la box.
 
 La Release n'est publiée que si les tests réussissent et que la signature permanente est configurée. Le dépôt est public par choix du propriétaire. Aucune télémétrie ni publicité. Interface inspirée de tvOS, sans affiliation à Apple.
