@@ -57,7 +57,7 @@ final class AerialPlayer {
   cover=new ImageView(activity);cover.setScaleType(ImageView.ScaleType.FIT_XY);overlay.addView(cover,new FrameLayout.LayoutParams(-1,-1));
   status=new TextView(activity);status.setTextColor(Color.WHITE);status.setTextSize(20);status.setShadowLayer(6,0,2,Color.BLACK);status.setPadding(40,20,40,32);
   overlay.addView(status,new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM));
-  overlay.setOnTouchListener((v,e)->{if(e.getAction()==MotionEvent.ACTION_DOWN){downX=e.getX();downY=e.getY();return true;}if(e.getAction()==MotionEvent.ACTION_UP){float dx=e.getX()-downX,dy=e.getY()-downY;float threshold=48*activity.getResources().getDisplayMetrics().density;if(Math.max(Math.abs(dx),Math.abs(dy))>threshold){if(Math.abs(dx)>Math.abs(dy))navigate(dx<0?1:-1,0);else navigate(0,dy<0?1:-1);}return true;}return true;});
+
   play();
  }
  private void label(String text){handler.removeCallbacks(hideLabel);status.animate().cancel();status.setAlpha(1);status.setText(text);overlay.setContentDescription("Économiseur aérien · "+text);}
@@ -110,6 +110,14 @@ final class AerialPlayer {
  }
  private void cancelTimeout(){if(timeout!=null){handler.removeCallbacks(timeout);timeout=null;}}
  private void releasePlayer(){cancelTimeout();generation++;if(cover!=null){cover.animate().setListener(null);cover.animate().cancel();}if(player!=null){player.clearVideoSurface();player.release();player=null;}}
+ boolean touch(MotionEvent e){
+  if(!visible())return false;
+  if(e.getActionMasked()==MotionEvent.ACTION_DOWN){downX=e.getX();downY=e.getY();}
+  else if(e.getActionMasked()==MotionEvent.ACTION_UP){float dx=e.getX()-downX,dy=e.getY()-downY;float threshold=48*activity.getResources().getDisplayMetrics().density;
+   if(Math.max(Math.abs(dx),Math.abs(dy))>threshold){if(Math.abs(dx)>Math.abs(dy))navigate(dx<0?1:-1,0);else navigate(0,dy<0?1:-1);}
+  }
+  return true;
+ }
  boolean key(KeyEvent event){
   int code=event.getKeyCode();
   if(held.contains(code)){if(event.getAction()==KeyEvent.ACTION_UP)held.remove(code);return true;}
