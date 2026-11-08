@@ -57,7 +57,7 @@ jobs:
       - name: Verify APK signature and Android compatibility
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.5.7.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.5.8.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose dist/*.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/*.apk | tee dist/apk-info.txt
           grep -q "sdkVersion:'28'" dist/apk-info.txt
@@ -89,6 +89,10 @@ jobs:
           path: dist
       - name: Decode deterministic H264 playback fixture
         run: python3 -c 'import base64,pathlib; pathlib.Path("/tmp/glasstv-playback.mp4").write_bytes(base64.b64decode(pathlib.Path(".github/fixtures/playback.mp4.b64").read_text()))'
+      - name: Install WebKit form regression test
+        run: |
+          python3 -m pip install playwright==1.56.0
+          python3 -m playwright install --with-deps webkit
       - name: Enable emulator acceleration
         run: sudo chmod 666 /dev/kvm
       - uses: reactivecircus/android-emulator-runner@v2
@@ -101,7 +105,7 @@ jobs:
           script: |
             adb shell wm size 1920x1080
             adb shell wm density 320
-            adb install dist/GlassTV-0.5.7.apk
+            adb install dist/GlassTV-0.5.8.apk
             cat /tmp/glasstv-playback.mp4 | adb shell 'run-as com.glasstv.launcher sh -c "mkdir -p files; cat > files/playback-test.mp4"'
             printf '<map><string name="saver_video">file:///data/user/0/com.glasstv.launcher/files/playback-test.mp4</string></map>' | adb shell 'run-as com.glasstv.launcher sh -c "mkdir -p shared_prefs; cat > shared_prefs/appearance.xml"'
             adb shell am start -W -n com.glasstv.launcher/.MainActivity
@@ -173,12 +177,12 @@ jobs:
           path: dist
       - name: Publish installable preview APK
         run: |
-          if gh release view v0.5.7 >/dev/null 2>&1; then exit 0; fi
+          if gh release view v0.5.8 >/dev/null 2>&1; then exit 0; fi
           cat > notes.md <<'NOTES'
           Configuration TMDB par QR code depuis le téléphone sur le même réseau local. Aucune clé TMDB incluse dans l’APK. Clé enregistrée uniquement sur la box et conservée aux mises à jour.
-          Texte d’aide retiré et ombre du titre estompée sur les bords.
+          Correction de la configuration depuis le téléphone : confirmation persistante, envoi sans changement de page et gestion des connexions simultanées. Test du formulaire avec WebKit.
           Installer par-dessus GlassTV 0.5.3 ou plus récent, sans désinstaller, pour conserver les réglages.
           NOTES
-          gh release create v0.5.7 dist/GlassTV-0.5.7.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.5.7 — Nouvelle interface TV" --notes-file notes.md --prerelease
+          gh release create v0.5.8 dist/GlassTV-0.5.8.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.5.8 — Nouvelle interface TV" --notes-file notes.md --prerelease
 
 
