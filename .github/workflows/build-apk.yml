@@ -57,7 +57,7 @@ jobs:
       - name: Verify APK signature and Android compatibility
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.5.8.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.5.9.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose dist/*.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/*.apk | tee dist/apk-info.txt
           grep -q "sdkVersion:'28'" dist/apk-info.txt
@@ -105,7 +105,7 @@ jobs:
           script: |
             adb shell wm size 1920x1080
             adb shell wm density 320
-            adb install dist/GlassTV-0.5.8.apk
+            adb install dist/GlassTV-0.5.9.apk
             cat /tmp/glasstv-playback.mp4 | adb shell 'run-as com.glasstv.launcher sh -c "mkdir -p files; cat > files/playback-test.mp4"'
             printf '<map><string name="saver_video">file:///data/user/0/com.glasstv.launcher/files/playback-test.mp4</string></map>' | adb shell 'run-as com.glasstv.launcher sh -c "mkdir -p shared_prefs; cat > shared_prefs/appearance.xml"'
             adb shell am start -W -n com.glasstv.launcher/.MainActivity
@@ -154,6 +154,20 @@ jobs:
             sleep 1
             adb exec-out screencap -p > screenshots/phone-setup.png
             python3 .github/scripts/test-phone-setup.py
+            adb shell am force-stop com.glasstv.launcher
+            printf '<map><boolean name="developer" value="true"/><boolean name="saver_auto" value="false"/></map>' | adb shell 'run-as com.glasstv.launcher sh -c "cat > shared_prefs/appearance.xml"'
+            adb logcat -c
+            adb shell am start -W -n com.glasstv.launcher/.MainActivity
+            sleep 2
+            adb shell input keyevent 82
+            sleep 1
+            adb shell input keyevent 20 20 20 20 20 20 20 20
+            adb shell input keyevent 23
+            for attempt in $(seq 1 50); do if adb logcat -d -s GLASSTV_AERIAL:I | grep -q 'FIRST_FRAME.*remote=true'; then break; fi; sleep 2; done
+            adb logcat -d -s GLASSTV_AERIAL > screenshots/remote-playback.txt
+            grep -q 'FIRST_FRAME.*remote=true' screenshots/remote-playback.txt
+            adb exec-out screencap -p > screenshots/remote-aerial.png
+            adb shell input keyevent 4
             adb logcat -d -b crash > screenshots/crash.txt
             test ! -s screenshots/crash.txt
       - uses: actions/upload-artifact@v4
@@ -177,12 +191,12 @@ jobs:
           path: dist
       - name: Publish installable preview APK
         run: |
-          if gh release view v0.5.8 >/dev/null 2>&1; then exit 0; fi
+          if gh release view v0.5.9 >/dev/null 2>&1; then exit 0; fi
           cat > notes.md <<'NOTES'
           Configuration TMDB par QR code depuis le téléphone sur le même réseau local. Aucune clé TMDB incluse dans l’APK. Clé enregistrée uniquement sur la box et conservée aux mises à jour.
-          Correction de la configuration depuis le téléphone : confirmation persistante, envoi sans changement de page et gestion des connexions simultanées. Test du formulaire avec WebKit.
+          Économiseur : remplacement du serveur Apple par quatre vidéos aériennes AerialShots de RobinFrcd (La Réunion et les Alpes), en HTTPS et H.264 1080p. Vérification TLS conservée. Test de lecture distante jusqu’à la première image.
           Installer par-dessus GlassTV 0.5.3 ou plus récent, sans désinstaller, pour conserver les réglages.
           NOTES
-          gh release create v0.5.8 dist/GlassTV-0.5.8.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.5.8 — Nouvelle interface TV" --notes-file notes.md --prerelease
+          gh release create v0.5.9 dist/GlassTV-0.5.9.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.5.9 — Nouvelle interface TV" --notes-file notes.md --prerelease
 
 
