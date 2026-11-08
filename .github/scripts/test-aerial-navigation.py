@@ -7,6 +7,7 @@ def wait_for(category, clip):
         if marker in adb("logcat", "-d", "-s", "GLASSTV_AERIAL:I"):
             return
         time.sleep(1)
+    print(adb("logcat", "-d", "-s", "GLASSTV_AERIAL:I"))
     raise AssertionError("Video transition missing: " + marker)
 wait_for(0, 0)
 for key, cat, clip in [(22,0,1),(20,1,0),(21,1,1),(19,0,0)]:
