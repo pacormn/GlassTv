@@ -52,7 +52,7 @@ final class AerialPlayer {
    categories.add(new Category("Montagnes",new Clip("Mafate",REUNION+"Mafate_1080p_h264.m4v"),new Clip("Mont Blanc",BASE+"french-alps-2022-v1/robinfrcd_french_alps_mont_blanc_2_1080p_h264.m4v")));
    categories.add(new Category("Forêts et vallées",new Clip("Grand Étang",REUNION+"GrandEtang_1080p_h264.m4v"),new Clip("Grand Coude",REUNION+"GrandCoude_1080p_h264.m4v")));
   }else categories.add(new Category("Vidéo locale",new Clip("Ma vidéo",source)));
-  previous=activity.getCurrentFocus();overlay=new FrameLayout(activity);overlay.setBackgroundColor(Color.BLACK);overlay.setKeepScreenOn(true);host.addView(overlay,new FrameLayout.LayoutParams(-1,-1));
+  previous=activity.getCurrentFocus();overlay=new FrameLayout(activity){@Override public boolean onInterceptTouchEvent(MotionEvent event){return true;}};overlay.setBackgroundColor(Color.BLACK);overlay.setKeepScreenOn(true);host.addView(overlay,new FrameLayout.LayoutParams(-1,-1));
   video=new TextureView(activity);overlay.addView(video,new FrameLayout.LayoutParams(-1,-1));video.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->crop());
   cover=new ImageView(activity);cover.setScaleType(ImageView.ScaleType.FIT_XY);overlay.addView(cover,new FrameLayout.LayoutParams(-1,-1));
   status=new TextView(activity);status.setTextColor(Color.WHITE);status.setTextSize(20);status.setShadowLayer(6,0,2,Color.BLACK);status.setPadding(40,20,40,32);
