@@ -744,6 +744,10 @@ public class MainActivity extends Activity {
             default: break;
         }
     }
+    @Override public boolean dispatchTouchEvent(MotionEvent event) {
+        if(aerial!=null && aerial.touch(event))return true;
+        return super.dispatchTouchEvent(event);
+    }
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         if(aerial.key(event)){resetIdle();return true;}
         int key=event.getKeyCode();
