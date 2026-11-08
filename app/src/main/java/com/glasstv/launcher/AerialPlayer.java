@@ -63,6 +63,7 @@ final class AerialPlayer {
  private void label(String text){handler.removeCallbacks(hideLabel);status.animate().cancel();status.setAlpha(1);status.setText(text);overlay.setContentDescription("Économiseur aérien · "+text);}
  private void navigate(int horizontal,int vertical){
   if(!visible())return;
+  Log.i("GLASSTV_AERIAL","NAV horizontal="+horizontal+" vertical="+vertical);
   if(vertical!=0){category=Math.floorMod(category+vertical,categories.size());clip=0;}else clip=Math.floorMod(clip+horizontal,categories.get(category).clips.length);
   label(categories.get(category).name+" · "+categories.get(category).clips[clip].name);
   handler.removeCallbacks(loadSelection);
