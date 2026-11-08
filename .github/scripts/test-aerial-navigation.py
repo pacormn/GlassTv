@@ -20,6 +20,11 @@ wait_for(1, 0)
 adb("logcat", "-c")
 adb("shell", "input", "swipe", "1500", "540", "300", "540", "500")
 wait_for(1, 1)
+# Visit the third category and verify wrapping back to the first.
+for key, cat, clip in [(20,2,0),(22,2,1),(20,0,0)]:
+    adb("logcat", "-c")
+    adb("shell", "input", "keyevent", str(key))
+    wait_for(cat, clip)
 # Return exits; it must not trigger the launcher behind the overlay.
 adb("shell", "input", "keyevent", "4")
 adb("shell", "uiautomator", "dump", "/sdcard/after-saver.xml")
