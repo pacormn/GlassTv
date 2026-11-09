@@ -514,9 +514,11 @@ public class MainActivity extends Activity {
         TextView brand=text("GlassTV",28,0xbbffffff);
         brand.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
         time=text("",30,0xddffffff);time.setGravity(Gravity.RIGHT);
-        root.addView(time,frame(145,45,Gravity.TOP,1510,60));
+
         nowPlaying=new NowPlaying(this);
         LinearLayout button=new LinearLayout(this);button.setGravity(Gravity.CENTER);button.setPadding(px(24),0,px(24),0);
+        time.setPadding(0,0,px(18),0);
+        button.addView(time);
         TextView icon=text("☷",38,Color.WHITE);button.addView(icon);
         NowPlaying.Bars bars=nowPlaying.indicator();button.addView(bars,new LinearLayout.LayoutParams(px(38),px(32)));
         TextView song=text("",25,Color.WHITE);song.setSingleLine(true);song.setMaxWidth(px(300));song.setEllipsize(android.text.TextUtils.TruncateAt.END);song.setPadding(px(12),0,0,0);button.addView(song);
@@ -525,8 +527,7 @@ public class MainActivity extends Activity {
         button.setOnFocusChangeListener((v,focus)->{v.setPivotX(v.getWidth());v.animate().scaleX(focus?1.08f:1).scaleY(focus?1.12f:1).setDuration(duration(280)).setInterpolator(new OvershootInterpolator(.6f)).start();});
         button.setOnHoverListener((v,event)->{if(event.getAction()==MotionEvent.ACTION_HOVER_ENTER)v.requestFocus();return false;});
         headerButton=button;FrameLayout.LayoutParams hp=frame(-2,66,Gravity.TOP|Gravity.RIGHT,0,48);hp.rightMargin=px(119);root.addView(button,hp);
-        time.setVisibility(View.GONE);
-        nowPlaying.attach(button,song,bars);
+        nowPlaying.attach(song,bars);
         heroTitle=text(greeting(),82,Color.WHITE);heroTitle.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
         heroTitle.setShadowLayer(px(10),px(2),px(4),0xaa000000);
         root.addView(heroTitle,frame(1500,120,Gravity.TOP,112,65));
@@ -684,7 +685,6 @@ public class MainActivity extends Activity {
             nowPlaying.bindPlay(control(sheet,"Ⅱ  Pause",()->nowPlaying.command(0)));
             control(sheet,"⏭  Suivant",()->nowPlaying.command(1));
         }
-        control(sheet,"Autoriser les infos de lecture",()->nowPlaying.permission());
         TextView first=control(sheet,"Réglages Android TV",()->{try{startActivity(new Intent(Settings.ACTION_SETTINGS));}catch(android.content.ActivityNotFoundException e){Toast.makeText(this,"Réglages indisponibles",Toast.LENGTH_SHORT).show();}});
         control(sheet,"Ambiance  ·  "+new String[]{"Crépuscule","Océan","Minuit"}[palette],()->new AlertDialog.Builder(this).setTitle("Ambiance").setSingleChoiceItems(new String[]{"Crépuscule","Océan","Minuit"},palette,(d,which)->{palette=which;prefs.edit().putInt("palette",which).apply();wallpaper.reset();d.dismiss();closeControls();}).show());
         control(sheet,"Animations  ·  "+(reduced?"Réduites":"Fluides"),()->{reduced=!reduced;prefs.edit().putBoolean("reduced",reduced).apply();closeControls();});
@@ -702,6 +702,7 @@ public class MainActivity extends Activity {
         control(sheet,"À propos des données cinéma",()->new AlertDialog.Builder(this).setTitle("Données cinéma · TMDB").setMessage("This product uses the TMDB API but is not endorsed or certified by TMDB. Les bannières sont fournies par TMDB et s’actualisent depuis les sorties en salle et prochaines sorties en France.").setPositiveButton("Compris",null).show());
         control(sheet,"Choisir la bannière",this::chooseBackdrop);
         control(sheet,"Actualiser les applications",()->{closeControls();refreshApps();});
+        control(sheet,"Autoriser les infos de lecture",nowPlaying::permission);
         TextView close=control(sheet,"Fermer",this::closeControls);first.setNextFocusUpId(first.getId());close.setNextFocusDownId(close.getId());
         TextView version=text("GlassTV "+appVersion()+"  •  Interface locale",19,0x88ffffff);version.setPadding(0,px(25),0,0);sheet.addView(version);
         sheet.setTranslationX(px(90));sheet.setAlpha(0);sheet.animate().translationX(0).alpha(1).setDuration(duration(280)).setInterpolator(new DecelerateInterpolator()).start();
@@ -713,7 +714,7 @@ public class MainActivity extends Activity {
         v.setBackground(glass(0x30ffffff,0x12ffffff,23,0x3affffff));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,px(78));p.bottomMargin=px(13);parent.addView(v,p);
         panelButtons.add(v);v.setOnFocusChangeListener((view,focus)->{if(focus&&panelScroll!=null)v.post(()->{Rect r=new Rect();v.getDrawingRect(r);r.inset(-px(12),-px(14));v.requestRectangleOnScreen(r,false);});v.setTextColor(focus?0xff151520:Color.WHITE);v.setBackground(glass(focus?0xfff6faff:0x30ffffff,focus?0xffdddddd:0x12ffffff,23,0x77ffffff));v.animate().scaleX(focus?1.025f:1).scaleY(focus?1.025f:1).setDuration(duration(160)).start();});v.setOnClickListener(view->action.run());return v;
     }
-    private void closeControls(){if(panel==null)return;root.removeView(panel);panel=null;scroll.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);headerButton.setFocusable(true);if(lastFocus!=null)lastFocus.requestFocus();}
+    private void closeControls(){if(panel==null)return;root.removeView(panel);panel=null;nowPlaying.clearCard();scroll.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);headerButton.setFocusable(true);if(lastFocus!=null)lastFocus.requestFocus();}
     @Override public void onBackPressed(){if(panel!=null)closeControls();else if(!cards.isEmpty()){appsPage=false;animatePage(0,false);cards.get(0).requestFocus();}}
     private void requestHome() {
         try {

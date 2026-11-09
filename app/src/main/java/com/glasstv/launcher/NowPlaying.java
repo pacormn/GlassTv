@@ -18,7 +18,8 @@ public class NowPlaying {
     private final Activity activity;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private MediaController controller;
-    private LinearLayout capsule, card;
+    private LinearLayout card;
+    private ProgressBar timeline;
     private TextView title, details, progress, play;
     private ImageView cover;
     private Bars bars;
@@ -28,10 +29,20 @@ public class NowPlaying {
     public NowPlaying(Activity a) { activity=a; }
     private int dp(int n) { return Math.round(n*activity.getResources().getDisplayMetrics().widthPixels/1920f); }
     public void resume(){handler.removeCallbacks(tick);tick.run();}
-    public void pause(){handler.removeCallbacks(tick);}
-    public void attach(LinearLayout view, TextView label, Bars indicator){capsule=view;title=label;bars=indicator;refresh();}
+    public void pause(){handler.removeCallbacks(tick);if(bars!=null)bars.running=false;}
+    public void clearCard(){card=null;cover=null;details=null;progress=null;timeline=null;play=null;}
+    public void attach(TextView label, Bars indicator){title=label;bars=indicator;refresh();}
     public Bars indicator(){return new Bars();}
-    public void permission(){activity.startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));}
+    public void permission(){
+        try {
+            activity.startActivity(new Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
+        } catch (android.content.ActivityNotFoundException e) {
+            new android.app.AlertDialog.Builder(activity)
+                .setTitle("Accès aux informations de lecture")
+                .setMessage("Ce boîtier ne fournit pas de raccourci vers ce réglage. Cherchez « Accès aux notifications » dans les réglages Android TV.")
+                .setPositiveButton("Fermer", null).show();
+        }
+    }
     private MediaController current(){
         try{
             MediaSessionManager manager=activity.getSystemService(MediaSessionManager.class);
@@ -46,7 +57,10 @@ public class NowPlaying {
         card=new LinearLayout(activity);card.setOrientation(1);card.setPadding(dp(20),dp(20),dp(20),dp(20));
         android.graphics.drawable.GradientDrawable bg=new android.graphics.drawable.GradientDrawable();bg.setColor(0x35ffffff);bg.setCornerRadius(dp(26));card.setBackground(bg);
         LinearLayout row=new LinearLayout(activity);cover=new ImageView(activity);cover.setScaleType(ImageView.ScaleType.CENTER_CROP);row.addView(cover,new LinearLayout.LayoutParams(dp(90),dp(90)));
-        details=text("",25);details.setPadding(dp(16),0,0,0);row.addView(details,new LinearLayout.LayoutParams(0,dp(100),1));card.addView(row);
+        details=text("",25);details.setMaxLines(2);details.setEllipsize(android.text.TextUtils.TruncateAt.END);details.setPadding(dp(16),0,0,0);row.addView(details,new LinearLayout.LayoutParams(0,dp(100),1));card.addView(row);
+        timeline=new ProgressBar(activity,null,android.R.attr.progressBarStyleHorizontal);
+        timeline.setMax(1000);
+        card.addView(timeline,new LinearLayout.LayoutParams(-1,dp(20)));
         progress=text("",20);progress.setPadding(0,dp(12),0,dp(14));card.addView(progress);
         sheet.addView(card,new LinearLayout.LayoutParams(-1,-2));refresh();
     }
@@ -71,7 +85,15 @@ public class NowPlaying {
                 Bitmap art=m==null?null:m.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART);if(art==null&&m!=null)art=m.getBitmap(MediaMetadata.METADATA_KEY_ART);cover.setImageBitmap(art);
                 long duration=m==null?0:m.getLong(MediaMetadata.METADATA_KEY_DURATION);
                 long position=state==null?0:state.getPosition();if(playing&&state.getLastPositionUpdateTime()>0)position+=(long)((SystemClock.elapsedRealtime()-state.getLastPositionUpdateTime())*state.getPlaybackSpeed());
-                if(duration>0)position=Math.min(position,duration);progress.setText(clock(position)+(duration>0?" / "+clock(duration):""));
+                boolean hasPosition=state!=null&&state.getPosition()>=0;
+                boolean hasTimeline=hasPosition&&duration>0;
+                timeline.setVisibility(hasTimeline?View.VISIBLE:View.GONE);
+                if(hasTimeline){
+                    position=Math.max(0,Math.min(position,duration));
+                    timeline.setProgress((int)(1000.0*position/duration));
+                }
+                progress.setVisibility(hasPosition?View.VISIBLE:View.GONE);
+                if(hasPosition)progress.setText(clock(position)+(hasTimeline?" / "+clock(duration):""));
             }}
         if(play!=null)play.setText(playing?"Ⅱ  Pause":"▶  Lecture");
     }
