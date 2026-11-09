@@ -76,7 +76,9 @@ public final class AirPlayService extends Service {
     }
     private void setStatus(String text) {
         status = text;
-        getSystemService(NotificationManager.class).notify(71,notification(text));
+        if (Build.VERSION.SDK_INT < 33 || checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            getSystemService(NotificationManager.class).notify(71,notification(text));
+        }
         android.util.Log.i("GLASSTV_AIRPLAY", text);
     }
     private void fail(String text) {
@@ -100,7 +102,12 @@ public final class AirPlayService extends Service {
                 .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
                 .setOnAudioFocusChangeListener(change -> {
                     if (handle == 0) return;
-                    if (change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) sendCommand("pause");
+                    if (change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+                        bridge.nativeServerAudioSetClientGain(handle,0f);
+                        sendCommand("pause");
+                    } else if (change == AudioManager.AUDIOFOCUS_GAIN) {
+                        bridge.nativeServerAudioSetClientGain(handle,(float)Math.pow(10,clientVolume/20));
+                    }
                 },main).build();
             String identity = getSharedPreferences("airplay",0).getString("identity",null);
             if (identity == null) {
