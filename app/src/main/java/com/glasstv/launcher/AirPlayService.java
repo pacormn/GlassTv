@@ -243,6 +243,7 @@ public final class AirPlayService extends Service {
             }catch(IOException e){post(() -> Toast.makeText(this,"Commande AirPlay refusée · utilise l’iPhone",Toast.LENGTH_SHORT).show());}
         });
     }
+    public void onLog(String message) { android.util.Log.d("GLASSTV_AIRPLAY_NATIVE",message); }
     public void onVideoData(byte[] data,long time,boolean h265) {}
     public void onVideoSize(float a,float b,float c,float d) {}
     public void onConnectionReset(int reason) {}
