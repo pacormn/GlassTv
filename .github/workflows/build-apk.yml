@@ -57,7 +57,7 @@ jobs:
       - name: Verify APK signature and Android compatibility
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.5.11.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.5.12.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose dist/*.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/*.apk | tee dist/apk-info.txt
           grep -q "sdkVersion:'28'" dist/apk-info.txt
@@ -105,7 +105,7 @@ jobs:
           script: |
             adb shell wm size 1920x1080
             adb shell wm density 320
-            adb install dist/GlassTV-0.5.11.apk
+            adb install dist/GlassTV-0.5.12.apk
             cat /tmp/glasstv-playback.mp4 | adb shell 'run-as com.glasstv.launcher sh -c "mkdir -p files; cat > files/playback-test.mp4"'
             printf '<map><string name="saver_video">file:///data/user/0/com.glasstv.launcher/files/playback-test.mp4</string></map>' | adb shell 'run-as com.glasstv.launcher sh -c "mkdir -p shared_prefs; cat > shared_prefs/appearance.xml"'
             adb shell am start -W -n com.glasstv.launcher/.MainActivity
@@ -191,12 +191,12 @@ jobs:
           path: dist
       - name: Publish installable preview APK
         run: |
-          if gh release view v0.5.11 >/dev/null 2>&1; then exit 0; fi
+          if gh release view v0.5.12 >/dev/null 2>&1; then exit 0; fi
           cat > notes.md <<'NOTES'
           Configuration TMDB par QR code depuis le téléphone sur le même réseau local. Aucune clé TMDB incluse dans l’APK. Clé enregistrée uniquement sur la box et conservée aux mises à jour.
-          Économiseur : 18 vidéos AerialShots en H.264, réparties entre Océan, Montagnes et Forêts et vallées. Le titre de chaque vidéo apparaît en bas à droite pendant 4,8 secondes. Gauche/droite : vidéo, haut/bas : catégorie.
+          Économiseur : 18 vidéos AerialShots et 139 vidéos du catalogue Apple, réparties entre Océan, Montagnes et Forêts et vallées. Le titre de chaque vidéo apparaît en bas à droite pendant 4,8 secondes. Gauche/droite : vidéo, haut/bas : catégorie.
           Installer par-dessus GlassTV 0.5.3 ou plus récent, sans désinstaller, pour conserver les réglages.
           NOTES
-          gh release create v0.5.11 dist/GlassTV-0.5.11.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.5.11 — Catalogue de l’économiseur" --notes-file notes.md --prerelease
+          gh release create v0.5.12 dist/GlassTV-0.5.12.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.5.12 — Fondu entre vidéos et villes Apple" --notes-file notes.md --prerelease
 
 

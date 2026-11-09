@@ -32,7 +32,7 @@ wait_for(1, 0)
 swipe(0.78, 0.50, 0.22, 0.50)
 wait_for(1, 1)
 # Visit the third category and verify wrapping back to the first.
-for key, cat, clip in [(20,2,0),(21,2,5),(22,2,0),(22,2,1),(20,0,0)]:
+for key, cat, clip in [(20,2,0),(21,2,5),(22,2,0),(22,2,1),(19,1,0),(19,0,0)]:
     adb("logcat", "-c")
     adb("shell", "input", "keyevent", str(key))
     wait_for(cat, clip)
