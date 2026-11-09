@@ -68,6 +68,7 @@ public class MainActivity extends Activity {
     private ImageView backdrop, heroLogo;
     private View heroShade;
     private View headerButton;
+    private NowPlaying nowPlaying;
     private ScrollView panelScroll;
     private final java.util.concurrent.ExecutorService images=java.util.concurrent.Executors.newSingleThreadExecutor();
     private int imageGeneration;
@@ -514,12 +515,18 @@ public class MainActivity extends Activity {
         brand.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
         time=text("",30,0xddffffff);time.setGravity(Gravity.RIGHT);
         root.addView(time,frame(145,45,Gravity.TOP,1510,60));
-        TextView button=text("☷",42,Color.WHITE);button.setGravity(Gravity.CENTER);button.setContentDescription("Centre de contrôle");
-        button.setBackground(glass(0x45ffffff,0x15ffffff,33,0x66ffffff));button.setFocusable(true);button.setId(View.generateViewId());
+        nowPlaying=new NowPlaying(this);
+        LinearLayout button=new LinearLayout(this);button.setGravity(Gravity.CENTER);button.setPadding(px(24),0,px(24),0);
+        TextView icon=text("☷",38,Color.WHITE);button.addView(icon);
+        NowPlaying.Bars bars=nowPlaying.indicator();button.addView(bars,new LinearLayout.LayoutParams(px(38),px(32)));
+        TextView song=text("",25,Color.WHITE);song.setSingleLine(true);song.setMaxWidth(px(300));song.setEllipsize(android.text.TextUtils.TruncateAt.END);song.setPadding(px(12),0,0,0);button.addView(song);
+        button.setContentDescription("Centre de contrôle et musique");button.setBackground(glass(0x88000000,0x66333333,33,0x55ffffff));button.setFocusable(true);button.setId(View.generateViewId());
         button.setOnClickListener(v->showControls());
-        button.setOnFocusChangeListener((v,focus)->{button.setTextColor(focus?0xff111724:Color.WHITE);button.setBackground(glass(focus?0xfff7faff:0x45ffffff,focus?0xffdddddd:0x15ffffff,33,0x99ffffff));v.animate().scaleX(focus?1.08f:1).scaleY(focus?1.08f:1).translationZ(px(focus?16:0)).setDuration(duration(190)).start();});
-        button.setOnHoverListener((v,event)->{if(event.getAction()==android.view.MotionEvent.ACTION_HOVER_ENTER)v.requestFocus();return false;});
-        headerButton=button;root.addView(button,frame(100,66,Gravity.TOP,1701,48));
+        button.setOnFocusChangeListener((v,focus)->{v.setPivotX(v.getWidth());v.animate().scaleX(focus?1.08f:1).scaleY(focus?1.12f:1).setDuration(duration(280)).setInterpolator(new OvershootInterpolator(.6f)).start();});
+        button.setOnHoverListener((v,event)->{if(event.getAction()==MotionEvent.ACTION_HOVER_ENTER)v.requestFocus();return false;});
+        headerButton=button;FrameLayout.LayoutParams hp=frame(-2,66,Gravity.TOP|Gravity.RIGHT,0,48);hp.rightMargin=px(119);root.addView(button,hp);
+        time.setVisibility(View.GONE);
+        nowPlaying.attach(button,song,bars);
         heroTitle=text(greeting(),82,Color.WHITE);heroTitle.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
         heroTitle.setShadowLayer(px(10),px(2),px(4),0xaa000000);
         root.addView(heroTitle,frame(1500,120,Gravity.TOP,112,65));
@@ -529,11 +536,11 @@ public class MainActivity extends Activity {
         root.addView(heroSubtitle,frame(1500,44,Gravity.TOP,112,280));
     }
     @Override protected void onResume() {
-        super.onResume(); updates.resume();resumed=true; root.setAlpha(1f);root.setScaleX(1);root.setScaleY(1);startTmdbSlideshow();
+        super.onResume(); if(nowPlaying!=null)nowPlaying.resume(); updates.resume();resumed=true; root.setAlpha(1f);root.setScaleX(1);root.setScaleY(1);startTmdbSlideshow();
         if(panel!=null)closeControls();
         refreshApps(); handler.removeCallbacks(clockTick);clockTick.run();resetIdle();
     }
-    @Override protected void onPause() { super.onPause();if(phoneSetup!=null)phoneSetup.close();aerial.stop();handler.removeCallbacks(tmdbSlide);handler.removeCallbacks(idleSaver);if(pageAnimator!=null)pageAnimator.cancel();updates.pause();resumed=false;handler.removeCallbacks(clockTick);handler.removeCallbacks(holdBack);handler.removeCallbacks(singleMenu);handler.removeCallbacks(holdMenu);lastMenuUp=0;root.animate().cancel(); }
+    @Override protected void onPause() { super.onPause();if(nowPlaying!=null)nowPlaying.pause();if(phoneSetup!=null)phoneSetup.close();aerial.stop();handler.removeCallbacks(tmdbSlide);handler.removeCallbacks(idleSaver);if(pageAnimator!=null)pageAnimator.cancel();updates.pause();resumed=false;handler.removeCallbacks(clockTick);handler.removeCallbacks(holdBack);handler.removeCallbacks(singleMenu);handler.removeCallbacks(holdMenu);lastMenuUp=0;root.animate().cancel(); }
     @Override protected void onDestroy() { if(pageAnimator!=null)pageAnimator.cancel();tmdbRequests.shutdownNow();images.shutdownNow();updates.close();handler.removeCallbacksAndMessages(null);super.onDestroy(); }
     private void refreshApps() {
         String selected=lastFocus instanceof Card?((Card)lastFocus).app.pkg:"";
@@ -671,6 +678,13 @@ public class MainActivity extends Activity {
         FrameLayout.LayoutParams p=frame(560,-2,Gravity.RIGHT|Gravity.TOP,0,65);p.rightMargin=px(70);p.height=getResources().getDisplayMetrics().heightPixels-px(130);
         panelScroll=new ScrollView(this);panelScroll.setBackground(glass(0xe3303030,0xf0101010,42,0x88ffffff));panelScroll.setClipToOutline(true);panelScroll.setPadding(px(16),px(16),px(16),px(16));panelScroll.setClipToPadding(false);panelScroll.setVerticalScrollBarEnabled(false);panelScroll.addView(sheet);panel.addView(panelScroll,p);
         TextView heading=text("Centre de contrôle",36,Color.WHITE);sheet.addView(heading,new LinearLayout.LayoutParams(-1,px(75)));
+        nowPlaying.addCard(sheet);
+        if(nowPlaying.available()){
+            control(sheet,"⏮  Précédent",()->nowPlaying.command(-1));
+            nowPlaying.bindPlay(control(sheet,"Ⅱ  Pause",()->nowPlaying.command(0)));
+            control(sheet,"⏭  Suivant",()->nowPlaying.command(1));
+        }
+        control(sheet,"Autoriser les infos de lecture",()->nowPlaying.permission());
         TextView first=control(sheet,"Réglages Android TV",()->{try{startActivity(new Intent(Settings.ACTION_SETTINGS));}catch(android.content.ActivityNotFoundException e){Toast.makeText(this,"Réglages indisponibles",Toast.LENGTH_SHORT).show();}});
         control(sheet,"Ambiance  ·  "+new String[]{"Crépuscule","Océan","Minuit"}[palette],()->new AlertDialog.Builder(this).setTitle("Ambiance").setSingleChoiceItems(new String[]{"Crépuscule","Océan","Minuit"},palette,(d,which)->{palette=which;prefs.edit().putInt("palette",which).apply();wallpaper.reset();d.dismiss();closeControls();}).show());
         control(sheet,"Animations  ·  "+(reduced?"Réduites":"Fluides"),()->{reduced=!reduced;prefs.edit().putBoolean("reduced",reduced).apply();closeControls();});
@@ -692,7 +706,7 @@ public class MainActivity extends Activity {
         TextView version=text("GlassTV "+appVersion()+"  •  Interface locale",19,0x88ffffff);version.setPadding(0,px(25),0,0);sheet.addView(version);
         sheet.setTranslationX(px(90));sheet.setAlpha(0);sheet.animate().translationX(0).alpha(1).setDuration(duration(280)).setInterpolator(new DecelerateInterpolator()).start();
         for(int i=0;i<panelButtons.size();i++){TextView v=panelButtons.get(i);v.setNextFocusUpId(panelButtons.get(Math.max(0,i-1)).getId());v.setNextFocusDownId(panelButtons.get(Math.min(panelButtons.size()-1,i+1)).getId());}
-        first.requestFocus();
+        panelButtons.get(0).requestFocus();
     }
     private TextView control(LinearLayout parent,String title,Runnable action) {
         TextView v=text(title,27,Color.WHITE);v.setId(View.generateViewId());v.setNextFocusLeftId(v.getId());v.setNextFocusRightId(v.getId());v.setGravity(Gravity.CENTER_VERTICAL);v.setPadding(px(24),0,px(18),0);v.setFocusable(true);v.setClickable(true);
