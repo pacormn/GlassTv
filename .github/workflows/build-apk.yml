@@ -13,7 +13,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 50
     outputs:
       stable: ${{ steps.signing.outputs.stable }}
     steps:
@@ -30,7 +30,9 @@ jobs:
         with:
           gradle-version: '8.10.2'
       - name: Install Android SDK
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.0.12077973' 'cmake;3.22.1'
+      - name: Prepare pinned AirPlay sources
+        run: bash .github/scripts/prepare-airplay.sh
       - name: Configure permanent signing
         id: signing
         env:
@@ -57,7 +59,7 @@ jobs:
       - name: Verify APK signature and Android compatibility
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.5.14.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/GlassTV-0.5.15.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose dist/*.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/*.apk | tee dist/apk-info.txt
           grep -q "sdkVersion:'28'" dist/apk-info.txt
@@ -105,7 +107,7 @@ jobs:
           script: |
             adb shell wm size 1920x1080
             adb shell wm density 320
-            adb install dist/GlassTV-0.5.14.apk
+            adb install dist/GlassTV-0.5.15.apk
             cat /tmp/glasstv-playback.mp4 | adb shell 'run-as com.glasstv.launcher sh -c "mkdir -p files; cat > files/playback-test.mp4"'
             printf '<map><string name="saver_video">file:///data/user/0/com.glasstv.launcher/files/playback-test.mp4</string></map>' | adb shell 'run-as com.glasstv.launcher sh -c "mkdir -p shared_prefs; cat > shared_prefs/appearance.xml"'
             adb shell am start -W -n com.glasstv.launcher/.MainActivity
@@ -168,6 +170,18 @@ jobs:
             grep -q 'FIRST_FRAME.*remote=true' screenshots/remote-playback.txt
             adb exec-out screencap -p > screenshots/remote-aerial.png
             python3 .github/scripts/test-aerial-navigation.py
+            adb shell am force-stop com.glasstv.launcher
+            printf '<map><boolean name="airplay_enabled" value="true"/><boolean name="saver_auto" value="false"/></map>' | adb shell 'run-as com.glasstv.launcher sh -c "cat > shared_prefs/appearance.xml"'
+            adb logcat -c
+            adb shell am start -W -n com.glasstv.launcher/.MainActivity
+            for attempt in $(seq 1 30); do if adb logcat -d -s GLASSTV_AIRPLAY:I | grep -q 'Prêt'; then break; fi; sleep 2; done
+            adb logcat -d -s GLASSTV_AIRPLAY:I > screenshots/airplay.txt
+            grep -q 'Prêt' screenshots/airplay.txt
+            adb forward tcp:17000 tcp:7000
+            python3 .github/scripts/test-airplay.py
+            adb shell input keyevent 82
+            sleep 1
+            adb exec-out screencap -p > screenshots/airplay-controls.png
             adb logcat -d -b crash > screenshots/crash.txt
             test ! -s screenshots/crash.txt
       - uses: actions/upload-artifact@v4
@@ -191,13 +205,13 @@ jobs:
           path: dist
       - name: Publish installable preview APK
         run: |
-          if gh release view v0.5.14 >/dev/null 2>&1; then exit 0; fi
+          if gh release view v0.5.15 >/dev/null 2>&1; then exit 0; fi
           cat > notes.md <<'NOTES'
-          Aperçu de la capsule musicale et des commandes du centre de contrôle.
-          Activer GlassTV dans l’accès aux notifications via le bouton « Autoriser les infos de lecture » en bas du centre de contrôle.
-          Lancer une application musicale sur la box et revenir dans GlassTV pendant la lecture. Cette version utilise les sessions Android et ne reçoit pas AirPlay.
-          Installer par-dessus GlassTV 0.5.13 pour conserver les réglages.
+          Réception audio AirPlay intégrée à GlassTV, avec association par code, titre, artiste et pochette.
+          Centre de contrôle → AirPlay → Activer. Sur le même Wi-Fi, choisir GlassTV dans la sortie audio Apple Music sur iPhone. Le code apparaît dans le centre de contrôle et en notification sur la TV.
+          Audio seulement. La réception réelle depuis un iPhone doit être validée sur votre boîtier. Les commandes TV dépendent de la disponibilité DACP du téléphone.
+          Installer par-dessus la version précédente sans désinstaller. Moteur natif GPL-3.0 compilé depuis les sources référencées dans THIRD_PARTY_AIRPLAY.md.
           NOTES
-          gh release create v0.5.14 dist/GlassTV-0.5.14.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.5.14 — Capsule musicale" --notes-file notes.md --prerelease
+          gh release create v0.5.15 dist/GlassTV-0.5.15.apk dist/SHA256SUMS.txt --target "${{ github.sha }}" --title "GlassTV 0.5.15 — Réception audio AirPlay" --notes-file notes.md --prerelease
 
 

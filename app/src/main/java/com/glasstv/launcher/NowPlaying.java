@@ -46,6 +46,8 @@ public class NowPlaying {
         }
     }
     private MediaController current(){
+        MediaController own = AirPlayService.controller();
+        if (own != null) return own;
         try{
             MediaSessionManager manager=activity.getSystemService(MediaSessionManager.class);
             List<MediaController> sessions=manager.getActiveSessions(new ComponentName(activity,Access.class));

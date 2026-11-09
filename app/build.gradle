@@ -4,14 +4,18 @@ android {
     namespace 'com.glasstv.launcher'
     compileSdk 35
 
-    buildFeatures { buildConfig true }
+    buildFeatures { buildConfig true; prefab true }
+    ndkVersion "27.0.12077973"
+    externalNativeBuild { cmake { path file("../.airplay-source/app/src/main/cpp/CMakeLists.txt"); version "3.22.1" } }
 
     defaultConfig {
         applicationId 'com.glasstv.launcher'
         minSdk 28
         targetSdk 35
-        versionCode 21
-        versionName '0.5.14'
+        ndk { abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64' }
+        externalNativeBuild { cmake { arguments '-DANDROID_STL=c++_shared', '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON' } }
+        versionCode 22
+        versionName '0.5.15'
     }
     signingConfigs {
         permanent {
@@ -37,6 +41,7 @@ android {
 
 
 dependencies {
+    implementation "com.google.oboe:oboe:1.9.3"
     implementation 'com.google.zxing:core:3.5.3'
     implementation 'androidx.media3:media3-exoplayer:1.4.1'
     implementation 'androidx.media3:media3-ui:1.4.1'

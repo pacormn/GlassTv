@@ -516,6 +516,7 @@ public class MainActivity extends Activity {
         time=text("",30,0xddffffff);time.setGravity(Gravity.RIGHT);
 
         nowPlaying=new NowPlaying(this);
+        if (AirPlayService.enabled(this)) startForegroundService(new Intent(this,AirPlayService.class));
         LinearLayout button=new LinearLayout(this);button.setGravity(Gravity.CENTER);button.setPadding(px(24),0,px(24),0);
         time.setPadding(0,0,px(18),0);
         button.addView(time);
@@ -702,6 +703,22 @@ public class MainActivity extends Activity {
         control(sheet,"À propos des données cinéma",()->new AlertDialog.Builder(this).setTitle("Données cinéma · TMDB").setMessage("This product uses the TMDB API but is not endorsed or certified by TMDB. Les bannières sont fournies par TMDB et s’actualisent depuis les sorties en salle et prochaines sorties en France.").setPositiveButton("Compris",null).show());
         control(sheet,"Choisir la bannière",this::chooseBackdrop);
         control(sheet,"Actualiser les applications",()->{closeControls();refreshApps();});
+        control(sheet,"AirPlay · " + (AirPlayService.enabled(this) ? "Désactiver" : "Activer"), () -> {
+            AirPlayService.toggle(this);
+            closeControls();
+            showControls();
+        });
+        TextView airplayStatus=text(AirPlayService.status(),22,0xccffffff);
+        airplayStatus.setPadding(px(10),px(12),px(10),px(18));
+        sheet.addView(airplayStatus);
+        Runnable refreshAirplayStatus=new Runnable(){
+            @Override public void run(){
+                if(!airplayStatus.isAttachedToWindow())return;
+                airplayStatus.setText(AirPlayService.status());
+                airplayStatus.postDelayed(this,500);
+            }
+        };
+        airplayStatus.postDelayed(refreshAirplayStatus,500);
         control(sheet,"Autoriser les infos de lecture",nowPlaying::permission);
         TextView close=control(sheet,"Fermer",this::closeControls);first.setNextFocusUpId(first.getId());close.setNextFocusDownId(close.getId());
         TextView version=text("GlassTV "+appVersion()+"  •  Interface locale",19,0x88ffffff);version.setPadding(0,px(25),0,0);sheet.addView(version);
