@@ -69,6 +69,7 @@ public final class AirPlayService extends Service {
         main.post(this::startReceiver);
     }
     @Override public int onStartCommand(Intent intent,int flags,int startId) { return START_NOT_STICKY; }
+    @androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
     private Notification notification(String text) {
         PendingIntent open = PendingIntent.getActivity(this,0,new Intent(this,MainActivity.class),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
         return new Notification.Builder(this,"airplay").setSmallIcon(android.R.drawable.ic_media_play)

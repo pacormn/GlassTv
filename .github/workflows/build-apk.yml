@@ -55,7 +55,9 @@ jobs:
               with open(os.environ["GITHUB_OUTPUT"],"a") as f: f.write("stable=true\n")
           PY
       - name: Compile APK and run Android lint
-        run: gradle :app:assembleDebug :app:lintDebug --no-daemon --stacktrace
+        run: |
+          gradle :app:lintDebug --no-daemon --stacktrace
+          gradle :app:assembleDebug --no-daemon --stacktrace
       - name: Verify APK signature and Android compatibility
         run: |
           mkdir -p dist
