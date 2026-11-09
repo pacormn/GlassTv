@@ -56,7 +56,7 @@ public class NowPlaying {
     }
     private TextView text(String s,int size){TextView t=new TextView(activity);t.setText(s);t.setTextColor(Color.WHITE);t.setTextSize(0,dp(size));return t;}
     public void addCard(LinearLayout sheet){
-        card=new LinearLayout(activity);card.setOrientation(1);card.setPadding(dp(20),dp(20),dp(20),dp(20));
+        card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(20),dp(20),dp(20),dp(20));
         android.graphics.drawable.GradientDrawable bg=new android.graphics.drawable.GradientDrawable();bg.setColor(0x35ffffff);bg.setCornerRadius(dp(26));card.setBackground(bg);
         LinearLayout row=new LinearLayout(activity);cover=new ImageView(activity);cover.setScaleType(ImageView.ScaleType.CENTER_CROP);row.addView(cover,new LinearLayout.LayoutParams(dp(90),dp(90)));
         details=text("",25);details.setMaxLines(2);details.setEllipsize(android.text.TextUtils.TruncateAt.END);details.setPadding(dp(16),0,0,0);row.addView(details,new LinearLayout.LayoutParams(0,dp(100),1));card.addView(row);
