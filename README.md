@@ -27,7 +27,7 @@ Pour compiler, conserver uniquement **GLASSTV_SIGNING_JSON** dans les secrets Gi
 
 ## Économiseur vidéo
 
-Lecteur Media3 avec quatre vidéos aériennes H.264 1080p de [RobinFrcd / AerialShots](https://github.com/RobinFrcd/AerialShots) : Cap Méchant, Grand Étang, Mafate et Mont Blanc. Les vidéos sont lues depuis les Releases HTTPS de leur auteur, en remplacement du serveur Apple qui échouait sur la box. Passage à la suivante en cas d'échec, délai d'attente limité et cache disque plafonné à 256 Mo. Ce cache ne garantit pas la disponibilité hors ligne de toutes les vidéos.
+Lecteur Media3 avec les 18 vidéos aériennes H.264 1080p de [RobinFrcd / AerialShots](https://github.com/RobinFrcd/AerialShots), réparties entre Océan, Montagnes et Forêts et vallées. Gauche/droite change de vidéo, haut/bas change de catégorie. Un fondu de 2,4 secondes accompagne la transition. Le nom de la catégorie et le titre apparaissent en bas à droite pendant 4,8 secondes. Le cache disque est plafonné à 256 Mo.
 
 Le centre de contrôle permet de choisir une vidéo locale ; privilégier un MP4 H.264. Le mode développeur affiche la version en bas à droite et donne accès au bouton de test de l'économiseur. Une touche quitte la vidéo sans ouvrir une application derrière.
 
