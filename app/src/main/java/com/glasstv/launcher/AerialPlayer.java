@@ -43,6 +43,7 @@ final class AerialPlayer {
  private ExoPlayer outgoingPlayer;
  private TextureView outgoingVideo;
  private int category,clip,playingCategory,playingClip,generation;
+ private boolean collectionFailed;
  private boolean busy,hasFrame; private float videoRatio=16f/9f,downX,downY;
  private final Runnable hideCaption = () -> {
   if (caption != null) {
@@ -318,6 +319,7 @@ final class AerialPlayer {
  private void crop(){if(video==null||video.getWidth()==0||video.getHeight()==0)return;float ratio=(float)video.getWidth()/video.getHeight();Matrix m=new Matrix();m.setScale(Math.max(1,videoRatio/ratio),Math.max(1,ratio/videoRatio),video.getWidth()/2f,video.getHeight()/2f);video.setTransform(m);}
  private void play(){
   if(!visible())return;
+  collectionFailed=false;
   cancelTimeout();
   if(prefetchWriter!=null)prefetchWriter.cancel();
   generation++;
@@ -351,11 +353,11 @@ final class AerialPlayer {
      if(category!=playingCategory||clip!=playingClip)handler.post(loadSelection);
     }).start();
    }
-   @Override public void onPlayerError(PlaybackException error){if(token==generation){Log.w("GLASSTV_AERIAL",error.getErrorCodeName());failure(error.getErrorCodeName());}}
+   @Override public void onPlayerError(PlaybackException error){if(token==generation){Log.w("GLASSTV_AERIAL",error.getErrorCodeName());failure(connectionDiagnostic(error, selected.url));}}
    @Override public void onPlaybackStateChanged(int state){if(state==Player.STATE_ENDED&&token==generation&&!busy)navigate(1,0);}
   });
   player.setMediaItem(MediaItem.fromUri(Uri.parse(selected.url)));player.prepare();player.play();
-  timeout=()->{if(token==generation)failure("TIMEOUT");};handler.postDelayed(timeout,22000);
+  timeout=()->{if(token==generation)failure("Première image non reçue après 22 s · "+Uri.parse(selected.url).getHost());};handler.postDelayed(timeout,22000);
  }
  private void failure(String reason){
   failed.add(categories.get(playingCategory).clips[playingClip].url);
@@ -369,7 +371,34 @@ final class AerialPlayer {
   Clip[] choices=categories.get(category).clips;
   for(int n=1;n<=choices.length;n++){int next=(clip+n)%choices.length;if(!failed.contains(choices[next].url)){clip=next;handler.post(loadSelection);return;}}
   clearCaption();
-  showStatus("Cette collection est indisponible ("+reason+").\nHaut/bas : autre catégorie · Retour : quitter");
+  collectionFailed=true;
+  showStatus("Lecture impossible · "+categories.get(playingCategory).name+"\n"+reason+"\nOK : réessayer · Haut/bas : catégorie · Retour : quitter");
+ }
+ private String connectionDiagnostic(PlaybackException error, String url) {
+  String cause = error.getErrorCodeName();
+  Throwable current = error;
+  Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+  while (current != null && seen.add(current)) {
+   if (current instanceof java.security.cert.CertificateException ||
+       current instanceof javax.net.ssl.SSLPeerUnverifiedException) {
+    cause = "Certificat HTTPS refusé (" + current.getClass().getSimpleName() + ")";
+    break;
+   }
+   if (current instanceof javax.net.ssl.SSLException) cause = "Échec HTTPS (" + current.getClass().getSimpleName() + ")";
+   if (current instanceof java.net.UnknownHostException) cause = "DNS : serveur introuvable";
+   if (current instanceof java.net.SocketTimeoutException) cause = "Délai de connexion dépassé";
+   if (current instanceof java.net.ConnectException) cause = "Connexion au serveur impossible";
+   if (current instanceof HttpDataSource.InvalidResponseCodeException)
+    cause = "Réponse HTTP " + ((HttpDataSource.InvalidResponseCodeException)current).responseCode;
+   current = current.getCause();
+  }
+  return Uri.parse(url).getHost() + " · " + cause;
+ }
+ private void retryCollection() {
+  for(Clip entry:categories.get(category).clips)failed.remove(entry.url);
+  handler.removeCallbacks(loadSelection);
+  collectionFailed=false;
+  handler.post(loadSelection);
  }
  private void prefetchNeighbours() {
   if(prefetch==null||prefetch.isShutdown())return;
@@ -414,7 +443,7 @@ final class AerialPlayer {
   if(!visible())return false;
   if(code==KeyEvent.KEYCODE_VOLUME_UP||code==KeyEvent.KEYCODE_VOLUME_DOWN||code==KeyEvent.KEYCODE_VOLUME_MUTE)return false;
   if(event.getAction()==KeyEvent.ACTION_DOWN){held.add(code);if(event.getRepeatCount()!=0)return true;
-   switch(code){case KeyEvent.KEYCODE_DPAD_LEFT:navigate(-1,0);break;case KeyEvent.KEYCODE_DPAD_RIGHT:navigate(1,0);break;case KeyEvent.KEYCODE_DPAD_UP:navigate(0,-1);break;case KeyEvent.KEYCODE_DPAD_DOWN:navigate(0,1);break;default:stop();break;}
+   switch(code){case KeyEvent.KEYCODE_DPAD_CENTER:case KeyEvent.KEYCODE_ENTER:if(collectionFailed)retryCollection();else stop();break;case KeyEvent.KEYCODE_DPAD_LEFT:navigate(-1,0);break;case KeyEvent.KEYCODE_DPAD_RIGHT:navigate(1,0);break;case KeyEvent.KEYCODE_DPAD_UP:navigate(0,-1);break;case KeyEvent.KEYCODE_DPAD_DOWN:navigate(0,1);break;default:stop();break;}
   }return true;
  }
  void stop(){if(prefetchWriter!=null)prefetchWriter.cancel();if(prefetch!=null){prefetch.shutdownNow();prefetch=null;}releasePlayer();handler.removeCallbacks(loadSelection);clearCaption();busy=false;hasFrame=false;
