@@ -44,7 +44,7 @@ public class MainActivity extends Activity {
     private void resetIdle(){handler.removeCallbacks(idleSaver);if(resumed&&aerial!=null&&!aerial.visible()&&prefs.getBoolean("saver_auto",true))handler.postDelayed(idleSaver,180000);}
     @Override public void onUserInteraction(){super.onUserInteraction();resetIdle();}
     private String appVersion(){try{return getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(Exception e){return "?";}}
-    private void startSaver(){closeControls();handler.removeCallbacks(idleSaver);if(pageAnimator!=null)pageAnimator.cancel();aerial.start(prefs.getString("saver_video",AERIAL_SOURCE));developerBadge.bringToFront();}
+    private void startSaver(){closeControls();handler.removeCallbacks(idleSaver);if(pageAnimator!=null)pageAnimator.cancel();aerial.start(prefs.getString("saver_video",AERIAL_SOURCE));}
     private void chooseSaverVideo(){try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("video/*").addCategory(Intent.CATEGORY_OPENABLE).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION),43);}catch(android.content.ActivityNotFoundException e){Toast.makeText(this,"Aucun sélecteur de vidéos installé",Toast.LENGTH_LONG).show();}}
 
     private FrameLayout root, panel;

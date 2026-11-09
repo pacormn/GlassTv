@@ -1,4 +1,6 @@
-import subprocess, time
+import struct
+import subprocess
+import time
 def adb(*args): return subprocess.check_output(["adb", *args], text=True)
 def wait_for(category, clip):
     marker = "TRANSITION_DONE category=" + str(category) + " clip=" + str(clip)
@@ -14,12 +16,20 @@ for key, cat, clip in [(22,0,1),(20,1,0),(21,1,5),(19,0,0)]:
     adb("logcat", "-c")
     adb("shell", "input", "keyevent", str(key))
     wait_for(cat, clip)
-# Touch/trackpad swipes use the same category and clip selection.
-adb("logcat", "-c")
-adb("shell", "input", "swipe", "960", "850", "960", "200", "500")
+# Use the actual display bounds. An emulator may rotate or scale its display.
+png = subprocess.check_output(["adb", "exec-out", "screencap", "-p"])
+assert png[:8] == b"\x89PNG\r\n\x1a\n"
+width, height = struct.unpack(">II", png[16:24])
+print(f"Testing swipes on a {width} × {height} display")
+
+def swipe(x1, y1, x2, y2):
+    adb("logcat", "-c")
+    points = [int(x1 * width), int(y1 * height), int(x2 * width), int(y2 * height)]
+    adb("shell", "input", "touchscreen", "swipe", *map(str, points), "500")
+
+swipe(0.50, 0.78, 0.50, 0.22)
 wait_for(1, 0)
-adb("logcat", "-c")
-adb("shell", "input", "swipe", "1500", "540", "300", "540", "500")
+swipe(0.78, 0.50, 0.22, 0.50)
 wait_for(1, 1)
 # Visit the third category and verify wrapping back to the first.
 for key, cat, clip in [(20,2,0),(21,2,5),(22,2,0),(22,2,1),(20,0,0)]:
