@@ -714,7 +714,8 @@ public class MainActivity extends Activity {
         Runnable refreshAirplayStatus=new Runnable(){
             @Override public void run(){
                 if(!airplayStatus.isAttachedToWindow())return;
-                airplayStatus.setText(AirPlayService.status());
+                String nextStatus=AirPlayService.status();
+                if(!android.text.TextUtils.equals(airplayStatus.getText(),nextStatus))airplayStatus.setText(nextStatus);
                 airplayStatus.postDelayed(this,500);
             }
         };
