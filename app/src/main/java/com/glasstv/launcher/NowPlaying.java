@@ -77,15 +77,18 @@ public class NowPlaying {
     public boolean available(){return controller!=null;}
     public void bindPlay(TextView v){play=v;}
     private String clock(long ms){long s=Math.max(0,ms/1000);return String.format(java.util.Locale.ROOT,"%d:%02d",s/60,s%60);}
+    private static void updateText(TextView view,String value){
+        if(!android.text.TextUtils.equals(view.getText(),value))view.setText(value);
+    }
     private void refresh(){
         controller=current();MediaMetadata m=controller==null?null:controller.getMetadata();
         PlaybackState state=controller==null?null:controller.getPlaybackState();
         boolean playing=state!=null&&state.getState()==PlaybackState.STATE_PLAYING;
         String name=m==null?"":m.getString(MediaMetadata.METADATA_KEY_TITLE);
         if(name==null||name.isEmpty())name="Lecture en cours";
-        if(title!=null){title.setText(controller==null?"":name);title.setVisibility(controller==null?View.GONE:View.VISIBLE);bars.setVisibility(controller==null?View.GONE:View.VISIBLE);bars.running=playing;bars.invalidate();}
+        if(title!=null){updateText(title,controller==null?"":name);title.setVisibility(controller==null?View.GONE:View.VISIBLE);bars.setVisibility(controller==null?View.GONE:View.VISIBLE);bars.running=playing;bars.invalidate();}
         if(card!=null){card.setVisibility(controller==null?View.GONE:View.VISIBLE);
-            if(controller!=null){String artist=m==null?null:m.getString(MediaMetadata.METADATA_KEY_ARTIST);details.setText(name+"\n"+(artist==null?"":artist));
+            if(controller!=null){String artist=m==null?null:m.getString(MediaMetadata.METADATA_KEY_ARTIST);updateText(details,name+"\n"+(artist==null?"":artist));
                 Bitmap art=m==null?null:m.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART);if(art==null&&m!=null)art=m.getBitmap(MediaMetadata.METADATA_KEY_ART);cover.setImageBitmap(art);
                 long duration=m==null?0:m.getLong(MediaMetadata.METADATA_KEY_DURATION);
                 long position=state==null?0:state.getPosition();if(playing&&state.getLastPositionUpdateTime()>0)position+=(long)((SystemClock.elapsedRealtime()-state.getLastPositionUpdateTime())*state.getPlaybackSpeed());
@@ -97,9 +100,9 @@ public class NowPlaying {
                     timeline.setProgress((int)(1000.0*position/duration));
                 }
                 progress.setVisibility(hasPosition?View.VISIBLE:View.GONE);
-                if(hasPosition)progress.setText(clock(position)+(hasTimeline?" / "+clock(duration):""));
+                if(hasPosition)updateText(progress,clock(position)+(hasTimeline?" / "+clock(duration):""));
             }}
-        if(play!=null)play.setText(playing?"Ⅱ  Pause":"▶  Lecture");
+        if(play!=null)updateText(play,playing?"Ⅱ  Pause":"▶  Lecture");
     }
     public class Bars extends View {
         boolean running;
