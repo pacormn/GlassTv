@@ -2,9 +2,19 @@
 
 ## Installer sur la TV
 
-### [⬇ Télécharger GlassTV 0.5.9.apk](https://github.com/pacormn/GlassTv/releases/download/v0.5.9/GlassTV-0.5.9.apk)
+### [⬇ Télécharger GlassTV 0.5.15.apk — préversion AirPlay](https://github.com/pacormn/GlassTv/releases/download/v0.5.15/GlassTV-0.5.15.apk)
 
-Lien direct à ouvrir avec le navigateur de la TV ou Downloader. [Voir la Release 0.5.9](https://github.com/pacormn/GlassTv/releases/tag/v0.5.9).
+Lien direct à ouvrir avec le navigateur de la TV ou Downloader. [Voir la préversion 0.5.15](https://github.com/pacormn/GlassTv/releases/tag/v0.5.15). Installer par-dessus la version précédente sans désinstaller.
+
+## AirPlay audio — version 0.5.15
+
+Ouvrir **Centre de contrôle → AirPlay · Activer**. Connecter l’iPhone au même réseau Wi-Fi, puis sélectionner **GlassTV** dans les sorties audio d’Apple Music. Le code d’association apparaît sur la TV. Le titre et la pochette reçus alimentent le bouton supérieur et la carte de lecture du centre de contrôle. Les commandes depuis la TV dépendent du service DACP fourni par l’iPhone.
+
+[Validation Android 11](https://github.com/pacormn/GlassTv/actions/runs/44166483202) : compilation ARM32/ARM64/x86_64, lint, signature, navigation, configuration téléphone avec persistance, lecture vidéo locale et distante, transitions, démarrage du récepteur et réponse RTSP OPTIONS validés. Ces tests ne valident pas une diffusion Apple Music depuis un iPhone réel : cette vérification reste à effectuer sur la box. Cette préversion ne revendique pas une certification AirPlay 2.
+
+Les mises à jour inutiles du texte d’état AirPlay et des informations de lecture ont été supprimées pour éviter les événements d’accessibilité continus.
+
+## Historique
 
 ## Version 0.5.9 publiée
 
